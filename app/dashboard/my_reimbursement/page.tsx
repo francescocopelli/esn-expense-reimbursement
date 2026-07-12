@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MyExpensesPage from '@/components/MyExpensesPage'
-import type { ExpenseCategory } from '@/lib/types'
+import type { ExpenseCategory, Project } from '@/lib/types'
 
 export default async function MyReimbursementPage() {
   const supabase = await createClient()
@@ -13,7 +13,7 @@ export default async function MyReimbursementPage() {
   if (!profile) redirect('/auth/login')
   // NOTE: admin can also have personal reimbursements — do NOT redirect away
 
-  const [{ data: reports }, { data: cats }] = await Promise.all([
+  const [{ data: reports }, { data: cats }, { data: projects }] = await Promise.all([
     supabase
       .from('expense_reports')
       .select('*, items:expense_items(*)')
@@ -23,9 +23,21 @@ export default async function MyReimbursementPage() {
       .from('expense_categories')
       .select('id, name, max_amount, created_at')
       .order('name'),
+    supabase
+      .from('projects')
+      .select('*, supervisors:project_supervisors(user_id, assigned_at, profiles(id, full_name, section)), allowed_categories:project_allowed_categories(*)')
+      .eq('is_active', true)
+      .order('name'),
   ])
 
   const categories: ExpenseCategory[] = cats ?? []
 
-  return <MyExpensesPage profile={profile} reports={reports ?? []} categories={categories} />
+  return (
+    <MyExpensesPage
+      profile={profile}
+      reports={reports ?? []}
+      categories={categories}
+      projects={(projects ?? []) as Project[]}
+    />
+  )
 }

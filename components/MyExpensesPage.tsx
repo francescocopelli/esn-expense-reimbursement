@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { Profile, ExpenseReport, ExpenseCategory } from '@/lib/types'
+import type { Profile, ExpenseReport, ExpenseCategory, Project } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
 import ExpenseFormClient from '@/components/forms/ExpenseFormClient'
 
@@ -11,9 +11,10 @@ interface Props {
   profile: Profile
   reports: ExpenseReport[]
   categories: ExpenseCategory[]
+  projects: Project[]
 }
 
-export default function MyExpensesPage({ profile, reports, categories }: Props) {
+export default function MyExpensesPage({ profile, reports, categories, projects }: Props) {
   const [showForm, setShowForm] = useState(false)
   const router = useRouter()
 
@@ -54,6 +55,7 @@ export default function MyExpensesPage({ profile, reports, categories }: Props) 
           <div className="card-body">
             <ExpenseFormClient
               categories={categories}
+              projects={projects}
               onSuccess={() => { setShowForm(false); router.refresh() }}
             />
           </div>
@@ -76,7 +78,7 @@ export default function MyExpensesPage({ profile, reports, categories }: Props) 
           ) : (
             <table className="table">
               <thead>
-                <tr><th>N° Rimborso</th><th>Evento</th><th>Voci</th><th>Totale</th><th>Stato</th><th>Data</th></tr>
+                <tr><th>N° Rimborso</th><th>Evento</th><th>Progetto</th><th>Voci</th><th>Totale</th><th>Stato</th><th>Data</th></tr>
               </thead>
               <tbody>
                 {reports.map(r => (
@@ -86,6 +88,11 @@ export default function MyExpensesPage({ profile, reports, categories }: Props) 
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
                     <td><code style={{ fontSize: '0.8rem', background: '#e9ecef', padding: '2px 6px', borderRadius: 4 }}>{r.report_number}</code></td>
                     <td>{r.event_name}</td>
+                    <td style={{ color: '#6c757d', fontSize: '0.85rem' }}>
+                      {r.project_id
+                        ? (projects.find(p => p.id === r.project_id)?.name ?? '—')
+                        : <span style={{ color: '#adb5bd' }}>—</span>}
+                    </td>
                     <td style={{ textAlign: 'center' }}>{(r.items ?? []).length}</td>
                     <td><strong>€{totalAmount(r).toFixed(2)}</strong></td>
                     <td><StatusBadge status={r.status} /></td>
