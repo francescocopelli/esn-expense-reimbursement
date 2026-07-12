@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Profile, ExpenseRequest } from '@/lib/types'
 import ExpenseForm from '@/components/forms/ExpenseForm'
 import StatusBadge from '@/components/StatusBadge'
@@ -17,7 +18,7 @@ export default function MemberDashboard({
   requests: ExpenseRequest[]
 }) {
   const [showForm, setShowForm] = useState(false)
-  const router = useRouter()
+  const router   = useRouter()
   const supabase = createClient()
 
   const handleLogout = async () => {
@@ -71,19 +72,17 @@ export default function MemberDashboard({
             </div>
             {showForm && (
               <div className="card-body">
-                <ExpenseForm onSuccess={() => setShowForm(false)} />
+                <ExpenseForm onSuccess={() => { setShowForm(false) }} />
               </div>
             )}
           </div>
 
           {/* Requests List */}
           <div className="card">
-            <div className="card-header">
-              Le Mie Richieste
-            </div>
+            <div className="card-header">Le Mie Richieste</div>
             {requests.length === 0 ? (
               <div className="card-body text-center py-8">
-                <p style={{fontSize:'2.5rem'}}>📋</p>
+                <p style={{ fontSize: '2.5rem' }}>📋</p>
                 <p className="text-muted">Nessuna richiesta inviata.</p>
                 <p className="text-muted text-sm mt-2">Clicca &ldquo;Aggiungi&rdquo; per iniziare.</p>
               </div>
@@ -102,22 +101,50 @@ export default function MemberDashboard({
                   </thead>
                   <tbody>
                     {requests.map(req => (
-                      <tr key={req.id}>
+                      <tr
+                        key={req.id}
+                        style={{ cursor: 'pointer' }}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
+                      >
                         <td>
-                          <span className="fw-bold">{req.event_name}</span>
+                          {/* Clicking the event name opens the detail page */}
+                          <Link
+                            href={`/dashboard/member/${req.id}`}
+                            style={{
+                              color: 'var(--esn-dark-blue)',
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                            }}
+                            onMouseEnter={e => ((e.target as HTMLElement).style.textDecoration = 'underline')}
+                            onMouseLeave={e => ((e.target as HTMLElement).style.textDecoration = 'none')}
+                          >
+                            {req.event_name}
+                          </Link>
                           {req.board_note && (
                             <p className="text-sm text-muted mt-2">💬 Board: {req.board_note}</p>
                           )}
                         </td>
                         <td>{req.category}</td>
-                        <td className="text-muted text-sm">{new Date(req.created_at).toLocaleDateString('it-IT')}</td>
+                        <td className="text-muted text-sm">
+                          {new Date(req.created_at).toLocaleDateString('it-IT')}
+                        </td>
                         <td className="fw-bold">€{req.amount.toFixed(2)}</td>
                         <td><StatusBadge status={req.status} /></td>
                         <td>
-                          {req.receipt_url
-                            ? <a href={req.receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm">📎 Vedi</a>
-                            : <span className="text-muted text-sm">—</span>
-                          }
+                          {req.receipt_url ? (
+                            <a
+                              href={req.receipt_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              📎 Vedi
+                            </a>
+                          ) : (
+                            <span className="text-muted text-sm">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Profile, ExpenseRequest, Status, STATUS_LABELS } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
 import EsnNavbar from '@/components/EsnNavbar'
@@ -17,12 +18,12 @@ export default function BoardDashboard({
   profile: Profile
   requests: RequestWithProfile[]
 }) {
-  const [requests, setRequests]       = useState(initialRequests)
+  const [requests,     setRequests]     = useState(initialRequests)
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all')
   const [filterEvent,  setFilterEvent]  = useState('')
   const [reviewingId,  setReviewingId]  = useState<string | null>(null)
-  const [note, setNote]               = useState('')
-  const router  = useRouter()
+  const [note,         setNote]         = useState('')
+  const router   = useRouter()
   const supabase = createClient()
 
   const handleLogout = async () => {
@@ -118,7 +119,7 @@ export default function BoardDashboard({
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value as Status | 'all')}
               className="form-select"
-              style={{width:'auto'}}
+              style={{ width: 'auto' }}
             >
               <option value="all">Tutti gli stati</option>
               {(['pending', 'approved', 'rejected'] as Status[]).map(s => (
@@ -130,7 +131,7 @@ export default function BoardDashboard({
               onChange={e => setFilterEvent(e.target.value)}
               placeholder="Filtra per evento..."
               className="form-control"
-              style={{width:'auto'}}
+              style={{ width: 'auto' }}
             />
             <span className="text-muted text-sm">{filtered.length} risultati</span>
           </div>
@@ -139,7 +140,7 @@ export default function BoardDashboard({
           <div className="card">
             {filtered.length === 0 ? (
               <div className="card-body text-center py-8">
-                <p style={{fontSize:'2.5rem'}}>🔍</p>
+                <p style={{ fontSize: '2.5rem' }}>🔍</p>
                 <p className="text-muted">Nessuna richiesta trovata.</p>
               </div>
             ) : (
@@ -158,43 +159,99 @@ export default function BoardDashboard({
                   </thead>
                   <tbody>
                     {filtered.map(req => (
-                      <tr key={req.id}>
+                      <tr
+                        key={req.id}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
+                      >
+                        {/* Evento: cliccabile, apre il dettaglio */}
                         <td>
-                          <span className="fw-bold">{req.event_name}</span>
-                          {req.description && <p className="text-sm text-muted">{req.description}</p>}
-                          {req.board_note  && <p className="text-sm text-muted">💬 {req.board_note}</p>}
+                          <Link
+                            href={`/dashboard/member/${req.id}`}
+                            style={{
+                              color: 'var(--esn-dark-blue)',
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                            }}
+                            onMouseEnter={e => ((e.target as HTMLElement).style.textDecoration = 'underline')}
+                            onMouseLeave={e => ((e.target as HTMLElement).style.textDecoration = 'none')}
+                          >
+                            {req.event_name}
+                          </Link>
+                          {req.description && (
+                            <p className="text-sm text-muted">{req.description}</p>
+                          )}
+                          {req.board_note && (
+                            <p className="text-sm text-muted">💬 {req.board_note}</p>
+                          )}
                         </td>
+
+                        {/* Membro */}
                         <td>
                           <span className="fw-bold">{req.profiles?.full_name}</span>
                           <p className="text-sm text-muted">{req.profiles?.section}</p>
                         </td>
+
                         <td>{req.category}</td>
-                        <td className="text-muted text-sm">{new Date(req.created_at).toLocaleDateString('it-IT')}</td>
+                        <td className="text-muted text-sm">
+                          {new Date(req.created_at).toLocaleDateString('it-IT')}
+                        </td>
                         <td className="fw-bold">€{req.amount.toFixed(2)}</td>
                         <td><StatusBadge status={req.status} /></td>
+
+                        {/* Azioni */}
                         <td>
                           {req.receipt_url && (
-                            <a href={req.receipt_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline mb-2 w-full">📎 Ricevuta</a>
+                            <a
+                              href={req.receipt_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-outline mb-2 w-full"
+                            >
+                              📎 Ricevuta
+                            </a>
                           )}
                           {req.status === 'pending' && (
                             reviewingId === req.id ? (
-                              <div style={{minWidth:'160px'}}>
+                              <div style={{ minWidth: '160px' }}>
                                 <textarea
                                   value={note}
                                   onChange={e => setNote(e.target.value)}
                                   rows={2}
                                   placeholder="Nota opzionale..."
                                   className="form-control mb-2"
-                                  style={{fontSize:'0.8125rem'}}
+                                  style={{ fontSize: '0.8125rem' }}
                                 />
                                 <div className="flex gap-2 mb-2">
-                                  <button onClick={() => handleReview(req.id, 'approved')} className="btn btn-sm btn-success" style={{flex:1}}>✅ Approva</button>
-                                  <button onClick={() => handleReview(req.id, 'rejected')} className="btn btn-sm btn-danger"  style={{flex:1}}>❌ Rifiuta</button>
+                                  <button
+                                    onClick={() => handleReview(req.id, 'approved')}
+                                    className="btn btn-sm btn-success"
+                                    style={{ flex: 1 }}
+                                  >
+                                    ✅ Approva
+                                  </button>
+                                  <button
+                                    onClick={() => handleReview(req.id, 'rejected')}
+                                    className="btn btn-sm btn-danger"
+                                    style={{ flex: 1 }}
+                                  >
+                                    ❌ Rifiuta
+                                  </button>
                                 </div>
-                                <button onClick={() => { setReviewingId(null); setNote('') }} className="btn btn-sm btn-outline w-full">Annulla</button>
+                                <button
+                                  onClick={() => { setReviewingId(null); setNote('') }}
+                                  className="btn btn-sm btn-outline w-full"
+                                >
+                                  Annulla
+                                </button>
                               </div>
                             ) : (
-                              <button onClick={() => setReviewingId(req.id)} className="btn btn-sm btn-esn-cyan">👁 Rivedi</button>
+                              <button
+                                onClick={() => setReviewingId(req.id)}
+                                className="btn btn-sm btn-esn-cyan"
+                              >
+                                👁 Rivedi
+                              </button>
                             )
                           )}
                         </td>
