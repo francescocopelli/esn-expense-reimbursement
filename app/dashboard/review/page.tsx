@@ -31,7 +31,8 @@ export default async function ReviewPage() {
   const rows = requests ?? []
 
   // Step 2: batch-fetch profili
-  const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))]
+  // Array.from(new Set(...)) instead of [...new Set(...)] for ES5 compat
+  const userIds = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)))
 
   const { data: memberProfiles, error: profError } = userIds.length > 0
     ? await supabase
@@ -48,7 +49,7 @@ export default async function ReviewPage() {
 
   const enrichedRequests = rows.map(r => ({
     ...r,
-    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '—' },
+    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '\u2014' },
   }))
 
   return <BoardDashboard profile={profile} requests={enrichedRequests} />

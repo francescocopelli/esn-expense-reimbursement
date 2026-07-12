@@ -26,8 +26,8 @@ export default async function BoardPage() {
   const rows = requests ?? []
 
   // Step 2: batch-fetch profiles for all unique user_ids referenced
-  // (avoids PostgREST FK join RLS issues)
-  const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))]
+  // Array.from(new Set(...)) is used instead of [...new Set(...)] for ES5 compat
+  const userIds = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)))
 
   const { data: memberProfiles, error: profError } = userIds.length > 0
     ? await supabase
@@ -45,7 +45,7 @@ export default async function BoardPage() {
   // Step 3: merge profiles into requests (same shape as PostgREST join)
   const enrichedRequests = rows.map(r => ({
     ...r,
-    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '—' },
+    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '\u2014' },
   }))
 
   return <BoardDashboard profile={profile} requests={enrichedRequests} />
