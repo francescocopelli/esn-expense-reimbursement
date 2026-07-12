@@ -43,20 +43,24 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { name, description, budget, is_active, supervisor_ids, allowed_categories } = body
+  const { name, description, budget, start_date, end_date, is_active, supervisor_ids, allowed_categories } = body
 
-  // Update project fields
+  // Validate dates when both provided
+  if (start_date && end_date && end_date < start_date)
+    return NextResponse.json({ error: 'La data di fine deve essere uguale o successiva alla data di inizio' }, { status: 400 })
+
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
-  if (name !== undefined) updateData.name = name.trim()
+  if (name        !== undefined) updateData.name        = name.trim()
   if (description !== undefined) updateData.description = description?.trim() || null
-  if (budget !== undefined) updateData.budget = budget || null
-  if (is_active !== undefined) updateData.is_active = is_active
+  if (budget      !== undefined) updateData.budget      = budget || null
+  if (start_date  !== undefined) updateData.start_date  = start_date || null
+  if (end_date    !== undefined) updateData.end_date    = end_date   || null
+  if (is_active   !== undefined) updateData.is_active   = is_active
 
   const { data: project, error: pErr } = await supabase
     .from('projects').update(updateData).eq('id', id).select().single()
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
 
-  // Replace supervisors if provided
   if (supervisor_ids !== undefined) {
     await supabase.from('project_supervisors').delete().eq('project_id', id)
     if (supervisor_ids.length > 0) {
@@ -66,7 +70,6 @@ export async function PATCH(
     }
   }
 
-  // Replace allowed_categories if provided
   if (allowed_categories !== undefined) {
     await supabase.from('project_allowed_categories').delete().eq('project_id', id)
     if (allowed_categories.length > 0) {

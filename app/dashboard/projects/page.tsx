@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Project } from '@/lib/types'
+import { formatDateIT } from '@/lib/types'
 
 export default async function ProjectsPage() {
   const supabase = await createClient()
@@ -34,9 +35,14 @@ export default async function ProjectsPage() {
             <div key={p.id} className="card">
               <div className="card-header">
                 <h3 style={{ margin: 0 }}>{p.name}</h3>
-                {p.budget != null && (
-                  <span style={{ fontSize: '0.8rem', color: '#6c757d' }}>Budget: €{Number(p.budget).toFixed(2)}</span>
-                )}
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.25rem', fontSize: '0.8rem', color: '#6c757d' }}>
+                  {p.start_date && (
+                    <span>📅 {formatDateIT(p.start_date)}{p.end_date ? ` → ${formatDateIT(p.end_date)}` : ''}</span>
+                  )}
+                  {p.budget != null && (
+                    <span>Budget: €{Number(p.budget).toFixed(2)}</span>
+                  )}
+                </div>
               </div>
               <div className="card-body">
                 {p.description && (

@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import type { Project, Profile, ExpenseCategory } from '@/lib/types'
+import { formatDateIT } from '@/lib/types'
 
 interface CatRow { category_name: string; max_amount: string }
-
 const emptyCat = (): CatRow => ({ category_name: '', max_amount: '' })
 
 interface Props {
@@ -18,10 +18,11 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing]   = useState<Project | null>(null)
 
-  // Form state
   const [name, setName]               = useState('')
   const [description, setDescription] = useState('')
   const [budget, setBudget]           = useState('')
+  const [startDate, setStartDate]     = useState('')
+  const [endDate, setEndDate]         = useState('')
   const [supervisorIds, setSupervisorIds] = useState<string[]>([])
   const [cats, setCats]               = useState<CatRow[]>([emptyCat()])
   const [saving, setSaving]           = useState(false)
@@ -30,6 +31,7 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
   const openNew = () => {
     setEditing(null)
     setName(''); setDescription(''); setBudget('')
+    setStartDate(''); setEndDate('')
     setSupervisorIds([]); setCats([emptyCat()])
     setError(null); setShowForm(true)
   }
@@ -39,6 +41,8 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
     setName(p.name)
     setDescription(p.description ?? '')
     setBudget(p.budget != null ? String(p.budget) : '')
+    setStartDate(p.start_date ?? '')
+    setEndDate(p.end_date ?? '')
     setSupervisorIds((p.supervisors ?? []).map((s: any) => s.user_id))
     setCats(
       (p.allowed_categories ?? []).length > 0
@@ -57,7 +61,9 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
   const removeCat = (i: number) => setCats(prev => prev.filter((_, idx) => idx !== i))
 
   const handleSave = async () => {
-    if (!name.trim()) { setError('Nome obbligatorio'); return }
+    if (!name.trim())  { setError('Nome obbligatorio'); return }
+    if (!startDate)    { setError('Data di inizio obbligatoria'); return }
+    if (endDate && endDate < startDate) { setError('La data di fine deve essere uguale o successiva alla data di inizio'); return }
     setSaving(true); setError(null)
 
     const validCats = cats
@@ -68,6 +74,8 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
       name: name.trim(),
       description: description.trim() || null,
       budget: budget ? parseFloat(budget) : null,
+      start_date: startDate,
+      end_date: endDate || null,
       supervisor_ids: supervisorIds,
       allowed_categories: validCats,
     }
@@ -79,7 +87,6 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
 
     if (!res.ok) { setError(data.error || 'Errore salvataggio'); setSaving(false); return }
 
-    // Refresh list
     const listRes  = await fetch('/api/projects')
     const listData = await listRes.json()
     setProjects(listData)
@@ -118,7 +125,7 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
           </div>
           <div className="card-body">
 
-            {/* Base fields */}
+            {/* Row 1: Name + Budget */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Nome *</label>
@@ -129,6 +136,25 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
                 <input type="number" step="0.01" min="0" className="form-control" value={budget} onChange={e => setBudget(e.target.value)} placeholder="es. 500.00" />
               </div>
             </div>
+
+            {/* Row 2: Start date + End date */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Data inizio *</label>
+                <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Data fine <span style={{ color: '#6c757d', fontWeight: 400 }}>(opzionale)</span>
+                </label>
+                <input type="date" className="form-control"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={e => setEndDate(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Description */}
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label">Descrizione</label>
               <textarea className="form-control" rows={2} value={description} onChange={e => setDescription(e.target.value)} placeholder="Breve descrizione del progetto..." />
@@ -192,7 +218,15 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
         <div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
           <table className="table">
             <thead>
-              <tr><th>Nome</th><th>Budget</th><th>Supervisori</th><th>Categorie</th><th>Stato</th><th style={{ textAlign: 'right' }}>Azioni</th></tr>
+              <tr>
+                <th>Nome</th>
+                <th>Date</th>
+                <th>Budget</th>
+                <th>Supervisori</th>
+                <th>Categorie</th>
+                <th>Stato</th>
+                <th style={{ textAlign: 'right' }}>Azioni</th>
+              </tr>
             </thead>
             <tbody>
               {projects.map(p => (
@@ -200,6 +234,12 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
                   <td>
                     <strong>{p.name}</strong>
                     {p.description && <div style={{ fontSize: '0.8rem', color: '#6c757d' }}>{p.description}</div>}
+                  </td>
+                  <td style={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                    <div>📅 {formatDateIT(p.start_date)}</div>
+                    {p.end_date
+                      ? <div style={{ color: '#6c757d' }}>↪ {formatDateIT(p.end_date)}</div>
+                      : <div style={{ color: '#aaa' }}>Fine: —</div>}
                   </td>
                   <td>{p.budget != null ? `€${Number(p.budget).toFixed(2)}` : <span style={{ color: '#aaa' }}>—</span>}</td>
                   <td style={{ fontSize: '0.85rem' }}>
@@ -236,7 +276,7 @@ export default function ProjectsClient({ initialProjects, allUsers, globalCatego
                 </tr>
               ))}
               {projects.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: '#6c757d', padding: '2rem' }}>Nessun progetto ancora. Clicca "+ Nuovo Progetto" per iniziare.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#6c757d', padding: '2rem' }}>Nessun progetto ancora. Clicca "+ Nuovo Progetto" per iniziare.</td></tr>
               )}
             </tbody>
           </table>

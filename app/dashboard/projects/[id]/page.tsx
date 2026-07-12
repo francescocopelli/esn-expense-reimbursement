@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import ProjectExpenseFormClient from '@/components/ProjectExpenseFormClient'
 import type { ExpenseCategory, Project } from '@/lib/types'
+import { formatDateIT } from '@/lib/types'
 
 export default async function ProjectReimbursementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -21,7 +22,6 @@ export default async function ProjectReimbursementPage({ params }: { params: Pro
 
   const p = project as Project
 
-  // Build categories: if project has specific allowed_categories use those, else all global
   let categories: ExpenseCategory[] = []
   if (p.allowed_categories && p.allowed_categories.length > 0) {
     categories = p.allowed_categories.map((c: any, idx: number) => ({
@@ -46,6 +46,12 @@ export default async function ProjectReimbursementPage({ params }: { params: Pro
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="card-header">
           <h2 style={{ margin: 0 }}>{p.name}</h2>
+          {(p.start_date || p.end_date) && (
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#6c757d' }}>
+              📅 {formatDateIT(p.start_date)}
+              {p.end_date && <> → {formatDateIT(p.end_date)}</>}
+            </p>
+          )}
           {p.description && <p style={{ margin: '0.25rem 0 0', color: '#6c757d', fontSize: '0.9rem' }}>{p.description}</p>}
           {p.supervisors && p.supervisors.length > 0 && (
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#6c757d' }}>

@@ -30,14 +30,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
 
   const body = await request.json()
-  const { name, description, budget, supervisor_ids = [], allowed_categories = [] } = body
+  const { name, description, budget, start_date, end_date, supervisor_ids = [], allowed_categories = [] } = body
 
   if (!name?.trim())
     return NextResponse.json({ error: 'Nome progetto obbligatorio' }, { status: 400 })
+  if (!start_date)
+    return NextResponse.json({ error: 'Data di inizio obbligatoria' }, { status: 400 })
+  if (end_date && end_date < start_date)
+    return NextResponse.json({ error: 'La data di fine deve essere uguale o successiva alla data di inizio' }, { status: 400 })
 
   const { data: project, error: pErr } = await supabase
     .from('projects')
-    .insert({ name: name.trim(), description: description?.trim() || null, budget: budget || null, created_by: user.id })
+    .insert({
+      name: name.trim(),
+      description: description?.trim() || null,
+      budget: budget || null,
+      start_date,
+      end_date: end_date || null,
+      created_by: user.id,
+    })
     .select().single()
 
   if (pErr || !project)

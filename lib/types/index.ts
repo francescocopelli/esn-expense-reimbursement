@@ -57,6 +57,8 @@ export interface Project {
   name: string
   description: string | null
   budget: number | null
+  start_date: string | null  // ISO date string 'YYYY-MM-DD'
+  end_date: string | null    // ISO date string 'YYYY-MM-DD', optional
   is_active: boolean
   created_by: string | null
   created_at: string
@@ -91,4 +93,11 @@ export const STATUS_COLORS: Record<Status, string> = {
   approved:   'bg-green-100 text-green-800 border-green-200',
   rejected:   'bg-red-100 text-red-800 border-red-200',
   needs_info: 'bg-orange-100 text-orange-800 border-orange-200',
+}
+
+/** Format a 'YYYY-MM-DD' date string to Italian locale (e.g. '13 lug 2026') */
+export function formatDateIT(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })
 }
