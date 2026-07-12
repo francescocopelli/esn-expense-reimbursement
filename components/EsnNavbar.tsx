@@ -102,6 +102,7 @@ function NavItems({
 
       {/* member-level links: visible to everyone */}
       <li><Link href="/dashboard/my_reimbursement" className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
+      <li><Link href="/dashboard/projects"          className={linkClass} onClick={onClick}>Progetti</Link></li>
 
       {/* board-level links: visible to board and admin */}
       {(role === 'board' || role === 'admin') && (
@@ -110,9 +111,7 @@ function NavItems({
 
       {/* admin-level links */}
       {role === 'admin' && (
-        <>
-          <li><Link href="/dashboard/admin"              className={linkClass} onClick={onClick}>Back Office</Link></li>
-        </>
+        <li><Link href="/dashboard/admin" className={linkClass} onClick={onClick}>Back Office</Link></li>
       )}
 
       {!mobile && (

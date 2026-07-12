@@ -41,6 +41,7 @@ export interface ExpenseReport {
   report_number: string
   user_id: string
   event_name: string
+  project_id: string | null
   status: Status
   board_note: string | null
   integration_note: string | null
@@ -49,6 +50,33 @@ export interface ExpenseReport {
   updated_at: string
   items?: ExpenseItem[]
   profiles?: Pick<Profile, 'id' | 'full_name' | 'section'>
+}
+
+export interface Project {
+  id: string
+  name: string
+  description: string | null
+  budget: number | null
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  supervisors?: ProjectSupervisor[]
+  allowed_categories?: ProjectAllowedCategory[]
+}
+
+export interface ProjectSupervisor {
+  project_id: string
+  user_id: string
+  assigned_at: string
+  profiles?: Pick<Profile, 'id' | 'full_name' | 'section'>
+}
+
+export interface ProjectAllowedCategory {
+  id: string
+  project_id: string
+  category_name: string
+  max_amount: number | null
 }
 
 export const STATUS_LABELS: Record<Status, string> = {

@@ -7,6 +7,7 @@ const NAV = [
   { href: '/dashboard/admin/users',      label: '\ud83d\udc65 Utenti' },
   { href: '/dashboard/admin/sections',   label: '\ud83c\udf0d Sezioni' },
   { href: '/dashboard/admin/categories', label: '\ud83c\udff7\ufe0f Categorie' },
+  { href: '/dashboard/admin/projects',   label: '\ud83d\udcc1 Progetti' },
   { href: '/dashboard/admin/reports',    label: '\ud83d\udcc4 Report' },
 ]
 

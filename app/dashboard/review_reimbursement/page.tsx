@@ -14,17 +14,29 @@ export default async function ReviewReimbursementPage() {
     .from('profiles').select('*').eq('id', user.id).single()
 
   if (!profile || (profile.role !== 'board' && profile.role !== 'admin')) {
-    redirect('/dashboard/my_reimbursement')
+    // Check if they are a project supervisor
+    const { data: supervised } = await supabase
+      .from('project_supervisors').select('project_id').eq('user_id', user.id)
+    if (!supervised || supervised.length === 0) redirect('/dashboard/my_reimbursement')
   }
 
-  const { data: reports, error: repError } = await supabase
+  let reportsQuery = supabase
     .from('expense_reports')
     .select('*, items:expense_items(*)')
     .order('created_at', { ascending: false })
 
+  // If not board/admin: only see reports for supervised projects
+  if (profile.role !== 'board' && profile.role !== 'admin') {
+    const { data: supervised } = await supabase
+      .from('project_supervisors').select('project_id').eq('user_id', user.id)
+    const projectIds = (supervised ?? []).map((s: any) => s.project_id)
+    reportsQuery = reportsQuery.in('project_id', projectIds)
+  }
+
+  const { data: reports, error: repError } = await reportsQuery
   if (repError) console.error('[review_reimbursement] fetch error:', repError.message)
 
-  const rows = (reports ?? []) as ExpenseReport[]
+  const rows    = (reports ?? []) as ExpenseReport[]
   const userIds = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)))
 
   const { data: memberProfiles } = userIds.length > 0
