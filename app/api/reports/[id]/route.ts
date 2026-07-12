@@ -9,7 +9,6 @@ interface ItemNote {
 interface PatchBody {
   status: string
   board_note?: string | null
-  integration_note?: string | null
   item_notes?: ItemNote[]
 }
 
@@ -33,15 +32,17 @@ export async function PATCH(
   if (!VALID_STATUSES.includes(body.status))
     return NextResponse.json({ error: 'Stato non valido' }, { status: 400 })
 
-  if (body.status === 'needs_info' && !body.integration_note?.trim())
-    return NextResponse.json({ error: 'La nota di integrazione è obbligatoria' }, { status: 400 })
+  // For needs_info: populate integration_note from board_note so the member
+  // sees the message in ResubmitPanel; clear it when approving/rejecting.
+  const integration_note =
+    body.status === 'needs_info' ? (body.board_note ?? null) : null
 
   const { data, error } = await supabase
     .from('expense_reports')
     .update({
       status:           body.status,
       board_note:       body.board_note ?? null,
-      integration_note: body.status === 'needs_info' ? (body.integration_note ?? null) : null,
+      integration_note,
       reviewed_by:      user.id,
       updated_at:       new Date().toISOString(),
     })

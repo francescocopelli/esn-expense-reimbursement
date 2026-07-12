@@ -14,24 +14,28 @@ interface Props {
 export default function ReviewDetailClient({ report, submitter }: Props) {
   const items = report.items ?? []
 
-  const [itemNotes, setItemNotes]     = useState<Record<string, string>>(
+  const [itemNotes, setItemNotes] = useState<Record<string, string>>(
     Object.fromEntries(items.map(item => [item.id, item.board_note ?? '']))
   )
-  const [globalNote, setGlobalNote]   = useState(report.board_note ?? '')
-  const [integrationNote, setIntNote] = useState('')
-  const [loading, setLoading]         = useState(false)
-  const [integrationErr, setIntErr]   = useState<string | null>(null)
+  const [globalNote, setGlobalNote] = useState(report.board_note ?? '')
+  const [loading, setLoading]       = useState(false)
+  const [submitErr, setSubmitErr]   = useState<string | null>(null)
   const router = useRouter()
 
   const totalAmount = items.reduce((sum, item) => sum + Number(item.amount), 0)
   const isPending   = report.status === 'pending'
 
   const submit = async (status: 'approved' | 'rejected' | 'needs_info') => {
-    if (status === 'needs_info' && !integrationNote.trim()) {
-      setIntErr('Inserisci una nota che spieghi cosa manca al membro.')
-      return
+    // For needs_info: require at least a global note OR at least one item note
+    if (status === 'needs_info') {
+      const hasGlobal = globalNote.trim().length > 0
+      const hasItem   = Object.values(itemNotes).some(n => n.trim().length > 0)
+      if (!hasGlobal && !hasItem) {
+        setSubmitErr('Per richiedere un’integrazione inserisci almeno una nota (globale o su una voce).')
+        return
+      }
     }
-    setIntErr(null)
+    setSubmitErr(null)
     setLoading(true)
 
     const item_notes = items.map(item => ({
@@ -44,8 +48,7 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status,
-        board_note:       globalNote.trim() || null,
-        integration_note: status === 'needs_info' ? integrationNote.trim() : null,
+        board_note: globalNote.trim() || null,
         item_notes,
       }),
     })
@@ -116,7 +119,10 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
                         style={{ fontSize: '0.8rem', minWidth: 180 }}
                         placeholder="Nota su questa voce..."
                         value={itemNotes[item.id] ?? ''}
-                        onChange={e => setItemNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
+                        onChange={e => {
+                          setSubmitErr(null)
+                          setItemNotes(prev => ({ ...prev, [item.id]: e.target.value }))
+                        }}
                       />
                     ) : (
                       <span style={{ fontSize: '0.875rem', color: '#495057' }}>
@@ -140,40 +146,27 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
         </div>
       </div>
 
-      {/* Decision / review-already-done */}
+      {/* Decisione */}
       {isPending ? (
         <div className="card">
           <div className="card-header"><h3 style={{ margin: 0 }}>Decisione</h3></div>
           <div className="card-body">
-
             <div className="form-group">
               <label className="form-label">
-                Nota globale per il membro{' '}
-                <span style={{ color: '#6c757d', fontWeight: 400 }}>(opzionale)</span>
+                Nota per il membro{' '}
+                <span style={{ color: '#6c757d', fontWeight: 400 }}>(opzionale per approvazione/rifiuto, almeno una nota obbligatoria per integrazione)</span>
               </label>
-              <textarea className="form-control" rows={2}
-                placeholder="Nota generale sul rimborso..."
+              <textarea className="form-control" rows={3}
+                placeholder="es. Tutto in ordine. / Manca la ricevuta della voce 2..."
                 value={globalNote}
-                onChange={e => setGlobalNote(e.target.value)}
+                onChange={e => { setSubmitErr(null); setGlobalNote(e.target.value) }}
+                style={{ borderColor: submitErr ? '#dc3545' : undefined }}
               />
             </div>
 
-            {/* Integration note — shown always so board can fill it before clicking */}
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="form-label">
-                Nota richiesta integrazione{' '}
-                <span style={{ color: '#6c757d', fontWeight: 400 }}>(obbligatoria se si rimanda indietro)</span>
-              </label>
-              <textarea className="form-control" rows={3}
-                placeholder="es. Manca la ricevuta della voce 2, si prega di allegarla..."
-                value={integrationNote}
-                onChange={e => { setIntErr(null); setIntNote(e.target.value) }}
-                style={{ borderColor: integrationErr ? '#dc3545' : undefined }}
-              />
-              {integrationErr && (
-                <p style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '0.25rem' }}>{integrationErr}</p>
-              )}
-            </div>
+            {submitErr && (
+              <div className="alert alert-danger" style={{ marginTop: '0.75rem' }}>{submitErr}</div>
+            )}
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
               <button className="btn btn-esn-cyan" disabled={loading} onClick={() => submit('approved')}>
@@ -198,11 +191,6 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
             {report.board_note && (
               <div style={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
                 <strong>Nota board:</strong> {report.board_note}
-              </div>
-            )}
-            {report.integration_note && (
-              <div style={{ background: '#fff3e0', border: '1px solid #ffb74d', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
-                <strong>Nota integrazione:</strong> {report.integration_note}
               </div>
             )}
             <p style={{ color: '#6c757d', margin: 0, fontSize: '0.9rem' }}>
