@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { Profile, ExpenseReport, Status } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
-import ExpenseForm from '@/components/forms/ExpenseForm'
 
 interface Props {
   profile: Profile
@@ -19,7 +19,6 @@ export default function BoardDashboard({ profile, reports }: Props) {
   const [reviewing, setReviewing]       = useState<string | null>(null)
   const [note, setNote]                 = useState('')
   const [loading, setLoading]           = useState(false)
-  const [showForm, setShowForm]         = useState(false)
   const router = useRouter()
 
   const totalAmount = (r: ExpenseReport) =>
@@ -45,8 +44,8 @@ export default function BoardDashboard({ profile, reports }: Props) {
     router.refresh()
   }
 
-  const pendingCount   = reports.filter(r => r.status === 'pending').length
-  const approvedTotal  = reports
+  const pendingCount  = reports.filter(r => r.status === 'pending').length
+  const approvedTotal = reports
     .filter(r => r.status === 'approved')
     .reduce((sum, r) => sum + totalAmount(r), 0)
 
@@ -56,23 +55,15 @@ export default function BoardDashboard({ profile, reports }: Props) {
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2 style={{ margin: 0 }}>🗂 Dashboard Board</h2>
+            <h2 style={{ margin: 0 }}>🗂 Revisione Rimborsi</h2>
             <p style={{ margin: '0.25rem 0 0', color: '#6c757d', fontSize: '0.9rem' }}>
-              {profile.full_name} · {profile.section}
+              {profile.full_name} · {profile.section} ·{' '}
+              <Link href="/dashboard/board" style={{ color: '#0d6efd', textDecoration: 'none', fontWeight: 500 }}>
+                ← I Miei Rimborsi
+              </Link>
             </p>
           </div>
-          <button
-            className="btn btn-esn-cyan"
-            onClick={() => setShowForm(v => !v)}
-          >
-            {showForm ? '✕ Chiudi' : '+ Inserisci Rimborso'}
-          </button>
         </div>
-        {showForm && (
-          <div className="card-body">
-            <ExpenseForm onSuccess={() => { setShowForm(false); router.refresh() }} />
-          </div>
-        )}
       </div>
 
       {/* Stats */}
@@ -129,7 +120,7 @@ export default function BoardDashboard({ profile, reports }: Props) {
                   <th>Totale</th>
                   <th>Stato</th>
                   <th>Data</th>
-                  <th>Azioni</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -137,9 +128,9 @@ export default function BoardDashboard({ profile, reports }: Props) {
                   <>
                     <tr
                       key={r.id}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => setReviewing(reviewing === r.id ? null : r.id)}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
+                      style={{ cursor: r.status === 'pending' ? 'pointer' : 'default' }}
+                      onClick={() => r.status === 'pending' && setReviewing(reviewing === r.id ? null : r.id)}
+                      onMouseEnter={e => r.status === 'pending' && (e.currentTarget.style.background = '#f0f4ff')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
                       <td><code style={{ fontSize: '0.8rem', background: '#e9ecef', padding: '2px 6px', borderRadius: 4 }}>{r.report_number}</code></td>
@@ -159,11 +150,9 @@ export default function BoardDashboard({ profile, reports }: Props) {
                       </td>
                     </tr>
 
-                    {/* Inline review panel */}
                     {reviewing === r.id && r.status === 'pending' && (
                       <tr key={`${r.id}-review`}>
                         <td colSpan={8} style={{ background: '#fff8e1', padding: '1rem' }}>
-                          {/* Items detail */}
                           <div style={{ marginBottom: '0.75rem' }}>
                             <strong style={{ fontSize: '0.85rem' }}>Voci di spesa:</strong>
                             <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
@@ -191,8 +180,6 @@ export default function BoardDashboard({ profile, reports }: Props) {
                               </tbody>
                             </table>
                           </div>
-
-                          {/* Note + buttons */}
                           <textarea
                             className="form-control"
                             rows={2}
@@ -202,22 +189,9 @@ export default function BoardDashboard({ profile, reports }: Props) {
                             style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}
                           />
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button
-                              className="btn btn-esn-cyan"
-                              disabled={loading}
-                              onClick={() => handleReview(r.id, 'approved')}
-                            >✅ Approva</button>
-                            <button
-                              className="btn"
-                              style={{ background: '#dc3545', color: '#fff', border: 'none' }}
-                              disabled={loading}
-                              onClick={() => handleReview(r.id, 'rejected')}
-                            >❌ Rifiuta</button>
-                            <button
-                              className="btn"
-                              style={{ background: 'transparent', border: '1px solid #aaa', color: '#6c757d' }}
-                              onClick={() => setReviewing(null)}
-                            >Annulla</button>
+                            <button className="btn btn-esn-cyan" disabled={loading} onClick={() => handleReview(r.id, 'approved')}>✅ Approva</button>
+                            <button className="btn" style={{ background: '#dc3545', color: '#fff', border: 'none' }} disabled={loading} onClick={() => handleReview(r.id, 'rejected')}>❌ Rifiuta</button>
+                            <button className="btn" style={{ background: 'transparent', border: '1px solid #aaa', color: '#6c757d' }} onClick={() => { setReviewing(null); setNote('') }}>Annulla</button>
                           </div>
                         </td>
                       </tr>

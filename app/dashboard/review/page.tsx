@@ -18,12 +18,10 @@ export default async function ReviewPage() {
 
   if (!profile || profile.role !== 'board') redirect('/dashboard/member')
 
-  // Solo rimborsi pending
   const { data: reports, error: repError } = await supabase
     .from('expense_reports')
-    .select('*, expense_items(*)')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
+    .select('*, items:expense_items(*)')
+    .order('created_at', { ascending: false })
 
   if (repError) console.error('[review] fetch reports error:', repError.message)
 

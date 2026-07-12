@@ -13,13 +13,11 @@ interface EsnNavbarProps {
 export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavbarProps) {
   return (
     <>
-      {/* Colorful strip — exact replica of Reimbursement-Tracker */}
       <div className="colorful-strip" />
 
       <header className="navbar">
         <div className="container">
-          {/* Brand */}
-          <Link href="/" className="navbar-brand">
+          <Link href="/dashboard" className="navbar-brand">
             <Image
               src="/logo.svg"
               alt="ESN Logo"
@@ -34,20 +32,27 @@ export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavb
             </div>
           </Link>
 
-          {/* Right side nav */}
           <nav>
             <ul className="navbar-nav">
               {userName ? (
                 <>
-                  <li>
-                    <Link href="/dashboard" className="nav-link">
-                      Dashboard
-                    </Link>
-                  </li>
-                  {role === 'board' && (
+                  {role === 'board' ? (
+                    <>
+                      <li>
+                        <Link href="/dashboard/board" className="nav-link">
+                          I Miei Rimborsi
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/review" className="nav-link">
+                          Revisione
+                        </Link>
+                      </li>
+                    </>
+                  ) : (
                     <li>
-                      <Link href="/dashboard/review" className="nav-link">
-                        Revisione
+                      <Link href="/dashboard/member" className="nav-link">
+                        Dashboard
                       </Link>
                     </li>
                   )}

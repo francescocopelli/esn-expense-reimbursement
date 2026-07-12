@@ -1,9 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import BoardDashboard from '@/components/BoardDashboard'
-import type { ExpenseReport } from '@/lib/types'
-
-type EnrichedReport = ExpenseReport & { profiles: { full_name: string; section: string } }
+import BoardSubmitPage from '@/components/BoardSubmitPage'
 
 export default async function BoardPage() {
   const supabase = await createClient()
@@ -18,34 +15,12 @@ export default async function BoardPage() {
 
   if (!profile || profile.role !== 'board') redirect('/dashboard/member')
 
-  // Step 1: fetch all reports with items
-  const { data: reports, error: repError } = await supabase
+  // Own reports
+  const { data: reports } = await supabase
     .from('expense_reports')
-    .select('*, expense_items(*)')
+    .select('*, items:expense_items(*)')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (repError) console.error('[board] fetch reports error:', repError.message)
-
-  const rows = (reports ?? []) as ExpenseReport[]
-
-  // Step 2: batch-fetch profiles for all unique user_ids
-  const userIds = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)))
-
-  const { data: memberProfiles } = userIds.length > 0
-    ? await supabase
-        .from('profiles')
-        .select('id, full_name, section')
-        .in('id', userIds)
-    : { data: [] as { id: string; full_name: string; section: string }[] }
-
-  const profileMap = Object.fromEntries(
-    (memberProfiles ?? []).map(p => [p.id, { full_name: p.full_name, section: p.section }])
-  )
-
-  const enrichedReports: EnrichedReport[] = rows.map(r => ({
-    ...r,
-    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '\u2014' },
-  }))
-
-  return <BoardDashboard profile={profile} reports={enrichedReports} />
+  return <BoardSubmitPage profile={profile} reports={reports ?? []} />
 }

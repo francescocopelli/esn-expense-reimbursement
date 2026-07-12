@@ -14,12 +14,11 @@ export default async function MemberPage() {
     .single()
 
   if (!profile) redirect('/auth/login')
-  if (profile.role === 'board') redirect('/dashboard/board')
+  // board can also access their own submissions page
 
-  // Fetch reports with items
   const { data: reports } = await supabase
     .from('expense_reports')
-    .select('*, expense_items(*)')
+    .select('*, items:expense_items(*)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
