@@ -4,12 +4,34 @@ import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 
 type CookieToSet = { name: string; value: string; options?: Partial<ResponseCookie> }
 
+/**
+ * Resolve the Supabase anon/publishable key with fallback.
+ * See lib/supabase/server.ts for full explanation.
+ */
+function resolveSupabaseKey(): string {
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!key) {
+    // In Edge Runtime we cannot throw safely — log and return empty string;
+    // the Supabase client will fail gracefully and getUser() will return null.
+    console.error(
+      '[middleware] ❌ Missing env var: set either ' +
+      'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY'
+    )
+    return ''
+  }
+
+  return key
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    resolveSupabaseKey(),
     {
       cookies: {
         getAll() {
