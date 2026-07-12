@@ -1,12 +1,21 @@
-import { Status, STATUS_COLORS, STATUS_LABELS } from '@/lib/types'
+import { Status, STATUS_LABELS } from '@/lib/types'
+
+const BADGE_CLASS: Record<Status, string> = {
+  pending:  'bg-pending',
+  approved: 'bg-approved',
+  rejected: 'bg-rejected',
+}
+
+const BADGE_ICON: Record<Status, string> = {
+  pending:  '⏳',
+  approved: '✅',
+  rejected: '❌',
+}
 
 export default function StatusBadge({ status }: { status: Status }) {
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[status]}`}
-    >
-      {status === 'pending' && '⏳'} {status === 'approved' && '✅'} {status === 'rejected' && '❌'}
-      {' '}{STATUS_LABELS[status]}
+    <span className={`badge ${BADGE_CLASS[status]}`}>
+      {BADGE_ICON[status]} {STATUS_LABELS[status]}
     </span>
   )
 }

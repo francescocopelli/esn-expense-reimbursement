@@ -15,7 +15,6 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body className={inter.className}>
-        <div className="esn-colorful-strip" />
         {children}
       </body>
     </html>
