@@ -1,6 +1,6 @@
-export type Role = 'member' | 'board'
+export type Role   = 'member' | 'board' | 'admin'
 export type Status = 'pending' | 'approved' | 'rejected' | 'needs_info'
-export type Category = 'Trasporti' | 'Catering' | 'Materiali' | 'Alloggio' | 'Altro'
+export type Category = string   // now dynamic from expense_categories table
 
 export interface Profile {
   id: string
@@ -9,6 +9,19 @@ export interface Profile {
   role: Role
   created_at: string
   updated_at: string
+}
+
+export interface EsnSection {
+  id: string
+  name: string
+  created_at: string
+}
+
+export interface ExpenseCategory {
+  id: string
+  name: string
+  max_amount: number | null
+  created_at: string
 }
 
 /** Legacy */
@@ -51,7 +64,7 @@ export interface ExpenseReport {
   event_name: string
   status: Status
   board_note: string | null
-  integration_note: string | null  // board message when sending back for integration
+  integration_note: string | null
   reviewed_by: string | null
   created_at: string
   updated_at: string
