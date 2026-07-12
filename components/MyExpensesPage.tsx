@@ -23,7 +23,7 @@ export default function MyExpensesPage({ profile, reports }: Props) {
     .filter(r => r.status === 'approved')
     .reduce((sum, r) => sum + totalAmount(r), 0)
 
-  const isBoard = profile.role === 'board'
+  const canReview = profile.role === 'board' || profile.role === 'admin'
 
   return (
     <div className="container">
@@ -34,7 +34,7 @@ export default function MyExpensesPage({ profile, reports }: Props) {
             <h2 style={{ margin: 0 }}>👋 Ciao, {profile.full_name}</h2>
             <p style={{ margin: '0.25rem 0 0', color: '#6c757d', fontSize: '0.9rem' }}>
               Sezione: {profile.section}
-              {isBoard && (
+              {canReview && (
                 <>
                   {' · '}
                   <Link href="/dashboard/review"

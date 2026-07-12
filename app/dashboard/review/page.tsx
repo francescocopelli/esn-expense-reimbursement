@@ -13,8 +13,11 @@ export default async function ReviewPage() {
   const { data: profile } = await supabase
     .from('profiles').select('*').eq('id', user.id).single()
 
-  if (!profile || profile.role !== 'board') redirect('/dashboard/member')
+  if (!profile || (profile.role !== 'board' && profile.role !== 'admin')) {
+    redirect('/dashboard/member')
+  }
 
+  // Carica TUTTI i report (board vede tutto via RLS, admin anche)
   const { data: reports, error: repError } = await supabase
     .from('expense_reports')
     .select('*, items:expense_items(*)')
