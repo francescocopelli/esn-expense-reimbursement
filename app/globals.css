@@ -21,7 +21,7 @@
 }
 
 /* ============================================================
-   COLORFUL STRIP — exact replica from Reimbursement-Tracker
+   COLORFUL STRIP
    ============================================================ */
 .colorful-strip {
   background: repeating-linear-gradient(
@@ -42,18 +42,13 @@
 }
 
 /* ============================================================
-   NAVBAR — from Tracker Layout.tsx / index.css
+   NAVBAR
    ============================================================ */
 .navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   background-color: #f8f9fa;
   position: sticky;
   top: 0;
   z-index: 1020;
-  padding: 0.5rem 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -62,10 +57,10 @@
   max-width: 1140px;
   margin: 0 auto;
   padding: 0 1rem;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
 }
 
 .navbar-brand {
@@ -76,12 +71,13 @@
   text-decoration: none;
   white-space: nowrap;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .navbar-brand:hover { color: #212529; }
 
 .navbar-brand img {
-  height: 48px;
+  height: 40px;
   width: auto;
 }
 
@@ -102,6 +98,28 @@
   color: var(--text-secondary);
 }
 
+/* ---- hamburger button ---- */
+.navbar-toggle {
+  display: none;          /* hidden on desktop */
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: #212529;
+  border-radius: 0.25rem;
+  flex-shrink: 0;
+}
+
+.navbar-toggle:hover { background: rgba(0,0,0,.06); }
+
+/* ---- desktop nav wrapper ---- */
+.navbar-nav-desktop {
+  display: flex;
+  align-items: center;
+}
+
 .navbar-nav {
   display: flex;
   align-items: center;
@@ -115,10 +133,59 @@
   color: rgba(33,37,41,0.65);
   text-decoration: none;
   padding: 0.5rem 0;
+  white-space: nowrap;
 }
 
 .nav-link:hover { color: rgba(33,37,41,0.9); }
 
+/* ---- mobile dropdown panel ---- */
+.navbar-collapse {
+  display: flex;
+  flex-direction: column;
+  background: #f8f9fa;
+  border-top: 1px solid var(--border-color);
+  padding: 0.5rem 1rem 1rem;
+  gap: 0.25rem;
+}
+
+.navbar-mobile-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.25rem;
+  list-style: none;
+}
+
+.navbar-mobile-link {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 0;
+  font-size: 1rem;
+  color: rgba(33,37,41,0.8);
+  text-decoration: none;
+  border-bottom: 1px solid #eee;
+}
+
+.navbar-mobile-link:hover { color: #212529; }
+
+.navbar-mobile-logout {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  background: none;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  color: #6c757d;
+  cursor: pointer;
+  text-align: left;
+}
+
+.navbar-mobile-logout:hover { color: #dc3545; border-color: #f5c2c7; }
+
+/* ---- user info (desktop) ---- */
 .user-info {
   display: flex;
   flex-direction: column;
@@ -139,6 +206,17 @@
 
 .role-badge.board  { background-color: var(--esn-dark-blue); }
 .role-badge.member { background-color: var(--esn-cyan); }
+
+/* ---- responsive breakpoint ---- */
+@media (max-width: 639px) {
+  .navbar-toggle      { display: flex; }     /* show burger */
+  .navbar-nav-desktop { display: none; }     /* hide desktop nav */
+
+  .navbar-brand-title { font-size: 0.82rem; }
+  .navbar-brand-section { font-size: 0.7rem; }
+
+  .navbar-brand img { height: 32px; }
+}
 
 /* ============================================================
    LAYOUT
