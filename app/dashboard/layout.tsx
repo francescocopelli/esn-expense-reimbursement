@@ -13,17 +13,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!profile) redirect('/auth/login')
 
-  // Admin layout handles its own navbar inside AdminLayoutClient
-  // We still render the layout shell but skip navbar for /dashboard/admin/*
-  // by delegating to AdminLayoutClient (which already has EsnNavbar).
-  // For all other roles we inject the shared navbar here.
-  const isAdmin = profile.role === 'admin'
-
   return (
     <>
-      {!isAdmin && <DashboardNavbarWrapper profile={profile} />}
+      <DashboardNavbarWrapper profile={profile} />
       <main>{children}</main>
-      {!isAdmin && <EsnFooter />}
+      <EsnFooter />
     </>
   )
 }

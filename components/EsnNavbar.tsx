@@ -16,12 +16,13 @@ export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavb
   const close = () => setOpen(false)
 
   const homePath =
-    role === 'admin' ? '/dashboard/admin' : '/dashboard/my_reimbursement'
+    role === 'admin' ? '/dashboard/admin' :
+    role === 'board' ? '/dashboard/my_reimbursement' :
+    '/dashboard/my_reimbursement'
 
   return (
     <>
       <div className="colorful-strip" />
-
       <header className="navbar">
         <div className="container">
           <Link href={homePath} className="navbar-brand" onClick={close}>
@@ -99,21 +100,19 @@ function NavItems({
         </li>
       )}
 
-      {role === 'admin' ? (
+      {/* member-level links: visible to everyone */}
+      <li><Link href="/dashboard/my_reimbursement" className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
+
+      {/* board-level links: visible to board and admin */}
+      {(role === 'board' || role === 'admin') && (
+        <li><Link href="/dashboard/review_reimbursement" className={linkClass} onClick={onClick}>Revisione</Link></li>
+      )}
+
+      {/* admin-level links */}
+      {role === 'admin' && (
         <>
-          <li><Link href="/dashboard/admin"              className={linkClass} onClick={onClick}>Dashboard</Link></li>
-          <li><Link href="/dashboard/admin/users"        className={linkClass} onClick={onClick}>Utenti</Link></li>
-          <li><Link href="/dashboard/admin/sections"     className={linkClass} onClick={onClick}>Sezioni</Link></li>
-          <li><Link href="/dashboard/admin/categories"   className={linkClass} onClick={onClick}>Categorie</Link></li>
-          <li><Link href="/dashboard/admin/reports"      className={linkClass} onClick={onClick}>Report</Link></li>
+          <li><Link href="/dashboard/admin"              className={linkClass} onClick={onClick}>Back Office</Link></li>
         </>
-      ) : role === 'board' ? (
-        <>
-          <li><Link href="/dashboard/my_reimbursement"      className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
-          <li><Link href="/dashboard/review_reimbursement"  className={linkClass} onClick={onClick}>Revisione</Link></li>
-        </>
-      ) : (
-        <li><Link href="/dashboard/my_reimbursement" className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
       )}
 
       {!mobile && (

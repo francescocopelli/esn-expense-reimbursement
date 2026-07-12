@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import AdminLayoutClient from '@/components/AdminLayoutClient'
 
@@ -10,7 +9,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { data: profile } = await supabase
     .from('profiles').select('role, full_name, section').eq('id', user.id).single()
-  if (!profile || profile.role !== 'admin') redirect('/dashboard/board')
 
-  return <AdminLayoutClient profile={profile}>{children}</AdminLayoutClient>
+  // Only admin can access the admin panel
+  if (!profile || profile.role !== 'admin') redirect('/dashboard/my_reimbursement')
+
+  return <AdminLayoutClient>{children}</AdminLayoutClient>
 }
