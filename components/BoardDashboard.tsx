@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation'
 
 type RequestWithProfile = ExpenseRequest & { profiles: Pick<Profile, 'full_name' | 'section'> }
 
+const IS_DEV = process.env.NODE_ENV === 'development'
+
 export default function BoardDashboard({
   profile,
   requests: initialRequests,
@@ -23,6 +25,7 @@ export default function BoardDashboard({
   const [filterEvent,  setFilterEvent]  = useState('')
   const [reviewingId,  setReviewingId]  = useState<string | null>(null)
   const [note,         setNote]         = useState('')
+  const [debugApiRes,  setDebugApiRes]  = useState<object | null>(null)
   const router   = useRouter()
   const supabase = createClient()
 
@@ -37,9 +40,10 @@ export default function BoardDashboard({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, board_note: note }),
     })
+    const json = await res.json()
+    if (IS_DEV) setDebugApiRes({ status: res.status, ok: res.ok, body: json })
     if (res.ok) {
-      const updated = await res.json()
-      setRequests(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r))
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, ...json } : r))
       setReviewingId(null)
       setNote('')
     }
@@ -59,6 +63,11 @@ export default function BoardDashboard({
   const totalApproved = Object.values(totalByCategory).reduce((s, v) => s + v, 0)
   const totalPending  = requests.filter(r => r.status === 'pending').reduce((s, r) => s + r.amount, 0)
 
+  // Debug stats (computed only in dev)
+  const nullProfileCount = IS_DEV
+    ? requests.filter(r => !r.profiles || !r.profiles.full_name).length
+    : 0
+
   return (
     <>
       <EsnNavbar
@@ -75,6 +84,100 @@ export default function BoardDashboard({
             <h1 className="page-title">Dashboard Board</h1>
             <p className="text-muted text-sm">Vista centralizzata di tutte le richieste di rimborso</p>
           </div>
+
+          {/* ── DEV DEBUG PANEL ─────────────────────────────────────── */}
+          {IS_DEV && (
+            <details
+              style={{
+                marginBottom: '1rem',
+                background: '#1e1e2e',
+                color: '#cdd6f4',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                fontSize: '0.8125rem',
+                fontFamily: 'monospace',
+                border: '1px solid #45475a',
+              }}
+            >
+              <summary style={{ cursor: 'pointer', fontWeight: 700, color: '#a6e3a1' }}>
+                🛠 DEV — Debug Panel (clicca per espandere)
+              </summary>
+
+              <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
+
+                {/* Counters */}
+                <div>
+                  <span style={{ color: '#89b4fa' }}>requests ricevute:</span>{' '}
+                  <strong>{requests.length}</strong>
+                  {requests.length === 0 && (
+                    <span style={{ color: '#f38ba8' }}>
+                      {' '}← ZERO richieste! Controlla la RLS su expense_requests per il ruolo board.
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <span style={{ color: '#89b4fa' }}>profiles null/mancanti:</span>{' '}
+                  <strong style={{ color: nullProfileCount > 0 ? '#f38ba8' : '#a6e3a1' }}>
+                    {nullProfileCount}
+                  </strong>
+                  {nullProfileCount > 0 && (
+                    <span style={{ color: '#f38ba8' }}>
+                      {' '}← RLS profiles blocca ancora il join. Esegui migration 006.
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <span style={{ color: '#89b4fa' }}>filtered (con filtri attivi):</span>{' '}
+                  <strong>{filtered.length}</strong>
+                </div>
+
+                {/* Last PATCH API response */}
+                {debugApiRes && (
+                  <div>
+                    <span style={{ color: '#89b4fa' }}>ultimo PATCH /api/requests/[id]:</span>
+                    <pre style={{
+                      background: '#181825',
+                      padding: '0.5rem',
+                      borderRadius: '4px',
+                      marginTop: '0.25rem',
+                      overflowX: 'auto',
+                      color: (debugApiRes as { ok?: boolean }).ok ? '#a6e3a1' : '#f38ba8',
+                    }}>
+                      {JSON.stringify(debugApiRes, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {/* First 3 raw requests */}
+                {requests.length > 0 && (
+                  <div>
+                    <span style={{ color: '#89b4fa' }}>prime 3 richieste (raw):</span>
+                    <pre style={{
+                      background: '#181825',
+                      padding: '0.5rem',
+                      borderRadius: '4px',
+                      marginTop: '0.25rem',
+                      overflowX: 'auto',
+                      maxHeight: '220px',
+                    }}>
+                      {JSON.stringify(requests.slice(0, 3), null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Quick hints */}
+                <div style={{ marginTop: '0.5rem', color: '#6c7086', fontSize: '0.75rem' }}>
+                  💡 Se requests=0 → la RLS <code>requests_select_board</code> non è attiva o
+                  <code> is_board_member()</code> non ha EXECUTE grant. Esegui migration 006.<br />
+                  💡 Se profiles=null → la RLS <code>profiles_select_board</code> blocca il join.
+                  Il fix è già nel fetch a 2 step di board/page.tsx.
+                </div>
+              </div>
+            </details>
+          )}
+          {/* ── END DEV DEBUG PANEL ─────────────────────────────────── */}
 
           {/* Summary stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -164,7 +267,6 @@ export default function BoardDashboard({
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
                       >
-                        {/* Evento: cliccabile, apre il dettaglio */}
                         <td>
                           <Link
                             href={`/dashboard/member/${req.id}`}
@@ -186,7 +288,6 @@ export default function BoardDashboard({
                           )}
                         </td>
 
-                        {/* Membro */}
                         <td>
                           <span className="fw-bold">{req.profiles?.full_name}</span>
                           <p className="text-sm text-muted">{req.profiles?.section}</p>
@@ -199,7 +300,6 @@ export default function BoardDashboard({
                         <td className="fw-bold">€{req.amount.toFixed(2)}</td>
                         <td><StatusBadge status={req.status} /></td>
 
-                        {/* Azioni */}
                         <td>
                           {req.receipt_url && (
                             <a
