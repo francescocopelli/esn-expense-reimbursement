@@ -3,9 +3,8 @@ import { redirect } from 'next/navigation'
 import BoardDashboard from '@/components/BoardDashboard'
 
 /**
- * /dashboard/review — alias for board members reaching the review page
- * directly (e.g. from a link or navbar).
- * Simply redirects to /dashboard/board which contains the full review UI.
+ * /dashboard/review — mostra solo le richieste in attesa al board.
+ * Usa fetch in due step per evitare problemi di RLS sui join FK di PostgREST.
  */
 export default async function ReviewPage() {
   const supabase = await createClient()
@@ -18,14 +17,39 @@ export default async function ReviewPage() {
     .eq('id', user.id)
     .single()
 
-  // Only board members can access this page
   if (!profile || profile.role !== 'board') redirect('/dashboard/member')
 
-  const { data: requests } = await supabase
+  // Step 1: solo richieste pending
+  const { data: requests, error: reqError } = await supabase
     .from('expense_requests')
-    .select('*, profiles(full_name, section)')
+    .select('*')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  return <BoardDashboard profile={profile} requests={requests ?? []} />
+  if (reqError) console.error('[review] fetch requests error:', reqError.message)
+
+  const rows = requests ?? []
+
+  // Step 2: batch-fetch profili
+  const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))]
+
+  const { data: memberProfiles, error: profError } = userIds.length > 0
+    ? await supabase
+        .from('profiles')
+        .select('id, full_name, section')
+        .in('id', userIds)
+    : { data: [], error: null }
+
+  if (profError) console.error('[review] fetch profiles error:', profError.message)
+
+  const profileMap = Object.fromEntries(
+    (memberProfiles ?? []).map(p => [p.id, { full_name: p.full_name, section: p.section }])
+  )
+
+  const enrichedRequests = rows.map(r => ({
+    ...r,
+    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '—' },
+  }))
+
+  return <BoardDashboard profile={profile} requests={enrichedRequests} />
 }

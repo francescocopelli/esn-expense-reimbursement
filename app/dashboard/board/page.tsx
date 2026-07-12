@@ -13,12 +13,40 @@ export default async function BoardPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'board') redirect('/dashboard/member')
+  if (!profile || profile.role !== 'board') redirect('/dashboard/member')
 
-  const { data: requests } = await supabase
+  // Step 1: fetch all requests (board RLS allows this)
+  const { data: requests, error: reqError } = await supabase
     .from('expense_requests')
-    .select('*, profiles(full_name, section)')
+    .select('*')
     .order('created_at', { ascending: false })
 
-  return <BoardDashboard profile={profile} requests={requests ?? []} />
+  if (reqError) console.error('[board] fetch requests error:', reqError.message)
+
+  const rows = requests ?? []
+
+  // Step 2: batch-fetch profiles for all unique user_ids referenced
+  // (avoids PostgREST FK join RLS issues)
+  const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))]
+
+  const { data: memberProfiles, error: profError } = userIds.length > 0
+    ? await supabase
+        .from('profiles')
+        .select('id, full_name, section')
+        .in('id', userIds)
+    : { data: [], error: null }
+
+  if (profError) console.error('[board] fetch profiles error:', profError.message)
+
+  const profileMap = Object.fromEntries(
+    (memberProfiles ?? []).map(p => [p.id, { full_name: p.full_name, section: p.section }])
+  )
+
+  // Step 3: merge profiles into requests (same shape as PostgREST join)
+  const enrichedRequests = rows.map(r => ({
+    ...r,
+    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '—' },
+  }))
+
+  return <BoardDashboard profile={profile} requests={enrichedRequests} />
 }
