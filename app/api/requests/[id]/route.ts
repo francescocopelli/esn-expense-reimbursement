@@ -3,8 +3,10 @@ import { NextResponse } from 'next/server'
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -25,7 +27,7 @@ export async function PATCH(
   const { data, error } = await supabase
     .from('expense_requests')
     .update({ status, board_note, reviewed_by: user.id })
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single()
 
