@@ -18,7 +18,7 @@ export default async function AdminProjectsPage() {
       .select('*, supervisors:project_supervisors(user_id, assigned_at, profiles(id, full_name, section)), allowed_categories:project_allowed_categories(*)')
       .order('name'),
     adminClient.from('profiles').select('id, full_name, section, role').order('full_name'),
-    supabase.from('expense_categories').select('id, name, max_amount').order('name'),
+    supabase.from('expense_categories').select('id, name, max_amount, created_at').order('name'),
   ])
 
   return (
