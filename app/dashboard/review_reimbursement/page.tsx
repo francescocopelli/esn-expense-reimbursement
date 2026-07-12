@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import BoardDashboard from '@/components/BoardDashboard'
 import type { ExpenseReport } from '@/lib/types'
@@ -20,12 +21,17 @@ export default async function ReviewReimbursementPage() {
     if (!supervised || supervised.length === 0) redirect('/dashboard/my_reimbursement')
   }
 
-  let reportsQuery = supabase
+  // Use admin client for board/admin so RLS doesn't filter out reports
+  const fetchClient = (profile.role === 'board' || profile.role === 'admin')
+    ? createAdminClient()
+    : supabase
+
+  let reportsQuery = fetchClient
     .from('expense_reports')
     .select('*, items:expense_items(*)')
     .order('created_at', { ascending: false })
 
-  // If not board/admin: only see reports for supervised projects
+  // Supervisors: only see reports for their projects
   if (profile.role !== 'board' && profile.role !== 'admin') {
     const { data: supervised } = await supabase
       .from('project_supervisors').select('project_id').eq('user_id', user.id)
@@ -49,7 +55,7 @@ export default async function ReviewReimbursementPage() {
 
   const enrichedReports: EnrichedReport[] = rows.map(r => ({
     ...r,
-    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '—' },
+    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '\u2014' },
   }))
 
   return <BoardDashboard profile={profile} reports={enrichedReports} />

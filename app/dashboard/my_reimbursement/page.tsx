@@ -11,7 +11,7 @@ export default async function MyReimbursementPage() {
   const { data: profile } = await supabase
     .from('profiles').select('*').eq('id', user.id).single()
   if (!profile) redirect('/auth/login')
-  if (profile.role === 'admin') redirect('/dashboard/admin')
+  // NOTE: admin can also have personal reimbursements — do NOT redirect away
 
   const [{ data: reports }, { data: cats }] = await Promise.all([
     supabase
