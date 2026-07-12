@@ -30,6 +30,20 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(data)
 }
 
+export async function PATCH(request: NextRequest) {
+  const { error, supabase } = await assertAdmin()
+  if (error) return error
+  const { id, name, max_amount } = await request.json()
+  if (!id) return NextResponse.json({ error: 'ID mancante' }, { status: 400 })
+  const updates: Record<string, any> = {}
+  if (name !== undefined) updates.name = name.trim()
+  if (max_amount !== undefined) updates.max_amount = max_amount === '' ? null : max_amount
+  const { data, error: dbErr } = await supabase!
+    .from('expense_categories').update(updates).eq('id', id).select().single()
+  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 export async function DELETE(request: NextRequest) {
   const { error, supabase } = await assertAdmin()
   if (error) return error

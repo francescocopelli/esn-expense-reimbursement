@@ -7,12 +7,8 @@ export default async function DashboardRedirect() {
   if (!user) redirect('/auth/login')
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+    .from('profiles').select('role').eq('id', user.id).single()
 
   if (profile?.role === 'admin') redirect('/dashboard/admin')
-  if (profile?.role === 'board') redirect('/dashboard/board')
-  redirect('/dashboard/member')
+  redirect('/dashboard/my_reimbursement')
 }

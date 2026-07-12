@@ -35,14 +35,13 @@ export default function BoardDashboard({ profile, reports }: Props) {
 
   return (
     <div className="container">
-      {/* Header */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0 }}>🗂 Revisione Rimborsi</h2>
             <p style={{ margin: '0.25rem 0 0', color: '#6c757d', fontSize: '0.9rem' }}>
-              {profile.full_name} · {profile.section} · {' '}
-              <Link href="/dashboard/board"
+              {profile.full_name} · {profile.section} ·{' '}
+              <Link href="/dashboard/my_reimbursement"
                 style={{ color: '#0d6efd', textDecoration: 'none', fontWeight: 500 }}>
                 ← I Miei Rimborsi
               </Link>
@@ -51,23 +50,12 @@ export default function BoardDashboard({ profile, reports }: Props) {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>
-        <div className="stat-card">
-          <div className="stat-value">{reports.length}</div>
-          <div className="stat-label">Rimborsi Totali</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{pendingCount}</div>
-          <div className="stat-label">Da Revisionare</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">€{approvedTotal.toFixed(2)}</div>
-          <div className="stat-label">Approvati</div>
-        </div>
+        <div className="stat-card"><div className="stat-value">{reports.length}</div><div className="stat-label">Rimborsi Totali</div></div>
+        <div className="stat-card"><div className="stat-value">{pendingCount}</div><div className="stat-label">Da Revisionare</div></div>
+        <div className="stat-card"><div className="stat-value">€{approvedTotal.toFixed(2)}</div><div className="stat-label">Approvati</div></div>
       </div>
 
-      {/* Filters */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div className="card-body" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <select className="form-select" style={{ maxWidth: 180 }}
@@ -77,6 +65,7 @@ export default function BoardDashboard({ profile, reports }: Props) {
             <option value="pending">In Attesa</option>
             <option value="approved">Approvati</option>
             <option value="rejected">Rifiutati</option>
+            <option value="needs_info">Integrare</option>
           </select>
           <input type="text" className="form-control" style={{ maxWidth: 240 }}
             placeholder="Cerca membro..."
@@ -86,7 +75,6 @@ export default function BoardDashboard({ profile, reports }: Props) {
         </div>
       </div>
 
-      {/* Reports table */}
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
           {filtered.length === 0 ? (
@@ -95,20 +83,13 @@ export default function BoardDashboard({ profile, reports }: Props) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>N° Rimborso</th>
-                  <th>Membro</th>
-                  <th>Evento</th>
-                  <th>Voci</th>
-                  <th>Totale</th>
-                  <th>Stato</th>
-                  <th>Data</th>
+                  <th>N° Rimborso</th><th>Membro</th><th>Evento</th><th>Voci</th><th>Totale</th><th>Stato</th><th>Data</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(r => (
-                  <tr key={r.id}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => router.push(`/dashboard/review/${r.id}`)}
+                  <tr key={r.id} style={{ cursor: 'pointer' }}
+                    onClick={() => router.push(`/dashboard/review_reimbursement/${r.id}`)}
                     onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
                     <td><code style={{ fontSize: '0.8rem', background: '#e9ecef', padding: '2px 6px', borderRadius: 4 }}>{r.report_number}</code></td>

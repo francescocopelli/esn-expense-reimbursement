@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import StatusBadge from '@/components/StatusBadge'
 import type { Status } from '@/lib/types'
 
@@ -22,9 +23,10 @@ export default function AdminReportsClient({
   initialReports: AdminReport[]
   sections: string[]
 }) {
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter]   = useState<string>('all')
   const [sectionFilter, setSectionFilter] = useState<string>('all')
-  const [search, setSearch] = useState('')
+  const [search, setSearch]               = useState('')
+  const router = useRouter()
 
   const filtered = useMemo(() => initialReports.filter(r => {
     if (statusFilter  !== 'all' && r.status !== statusFilter) return false
@@ -39,8 +41,7 @@ export default function AdminReportsClient({
     const rows = [
       ['Numero', 'Evento', 'Utente', 'Sezione', 'Stato', 'Data'],
       ...filtered.map(r => [
-        r.report_number,
-        r.event_name,
+        r.report_number, r.event_name,
         r.profiles?.full_name ?? '',
         r.profiles?.section ?? '',
         r.status,
@@ -61,15 +62,10 @@ export default function AdminReportsClient({
         <button className="btn btn-purple btn-sm" onClick={exportCsv}>💾 Esporta CSV</button>
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-        <input
-          className="form-control"
-          style={{ maxWidth: 240 }}
+        <input className="form-control" style={{ maxWidth: 240 }}
           placeholder="Cerca evento, utente, numero..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+          value={search} onChange={e => setSearch(e.target.value)} />
         <select className="form-select" style={{ width: 'auto' }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">Tutti gli stati</option>
           <option value="pending">In Attesa</option>
@@ -88,17 +84,16 @@ export default function AdminReportsClient({
           <table className="table">
             <thead>
               <tr>
-                <th>Numero</th>
-                <th>Evento</th>
-                <th>Utente</th>
-                <th>Sezione</th>
-                <th>Stato</th>
-                <th>Data</th>
+                <th>Numero</th><th>Evento</th><th>Utente</th><th>Sezione</th><th>Stato</th><th>Data</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(r => (
-                <tr key={r.id}>
+                <tr key={r.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => router.push(`/dashboard/review_reimbursement/${r.id}`)}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '')}>
                   <td><code style={{ fontSize: '0.8rem', background: '#e9ecef', padding: '2px 6px', borderRadius: 4 }}>{r.report_number}</code></td>
                   <td>{r.event_name}</td>
                   <td>{r.profiles?.full_name ?? <span style={{ color: '#aaa' }}>—</span>}</td>

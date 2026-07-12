@@ -27,7 +27,6 @@ export default function MyExpensesPage({ profile, reports }: Props) {
 
   return (
     <div className="container">
-      {/* Header card */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -37,7 +36,7 @@ export default function MyExpensesPage({ profile, reports }: Props) {
               {canReview && (
                 <>
                   {' · '}
-                  <Link href="/dashboard/review"
+                  <Link href="/dashboard/review_reimbursement"
                     style={{ color: '#0d6efd', textDecoration: 'none', fontWeight: 500 }}>
                     Vai alla Revisione →
                   </Link>
@@ -57,27 +56,14 @@ export default function MyExpensesPage({ profile, reports }: Props) {
         )}
       </div>
 
-      {/* Stat cards */}
       <div className="grid grid-3" style={{ marginBottom: '1.5rem' }}>
-        <div className="stat-card">
-          <div className="stat-value">{reports.length}</div>
-          <div className="stat-label">Rimborsi Totali</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{reports.filter(r => r.status === 'pending').length}</div>
-          <div className="stat-label">In Attesa</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">€{approvedTotal.toFixed(2)}</div>
-          <div className="stat-label">Approvati</div>
-        </div>
+        <div className="stat-card"><div className="stat-value">{reports.length}</div><div className="stat-label">Rimborsi Totali</div></div>
+        <div className="stat-card"><div className="stat-value">{reports.filter(r => r.status === 'pending').length}</div><div className="stat-label">In Attesa</div></div>
+        <div className="stat-card"><div className="stat-value">€{approvedTotal.toFixed(2)}</div><div className="stat-label">Approvati</div></div>
       </div>
 
-      {/* Reports table */}
       <div className="card">
-        <div className="card-header">
-          <h3 style={{ margin: 0 }}>I Miei Rimborsi</h3>
-        </div>
+        <div className="card-header"><h3 style={{ margin: 0 }}>I Miei Rimborsi</h3></div>
         <div className="card-body" style={{ padding: 0 }}>
           {reports.length === 0 ? (
             <p style={{ padding: '2rem', textAlign: 'center', color: '#6c757d' }}>
@@ -87,18 +73,13 @@ export default function MyExpensesPage({ profile, reports }: Props) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>N° Rimborso</th>
-                  <th>Evento</th>
-                  <th>Voci</th>
-                  <th>Totale</th>
-                  <th>Stato</th>
-                  <th>Data</th>
+                  <th>N° Rimborso</th><th>Evento</th><th>Voci</th><th>Totale</th><th>Stato</th><th>Data</th>
                 </tr>
               </thead>
               <tbody>
                 {reports.map(r => (
                   <tr key={r.id} style={{ cursor: 'pointer' }}
-                    onClick={() => router.push(`/dashboard/expenses/${r.id}`)}
+                    onClick={() => router.push(`/dashboard/my_reimbursement/${r.id}`)}
                     onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
                     <td><code style={{ fontSize: '0.8rem', background: '#e9ecef', padding: '2px 6px', borderRadius: 4 }}>{r.report_number}</code></td>

@@ -22,7 +22,7 @@ export async function PATCH(
 
   const { data: profile } = await supabase
     .from('profiles').select('role').eq('id', user.id).single()
-  if (!profile || profile.role !== 'board')
+  if (!profile || (profile.role !== 'board' && profile.role !== 'admin'))
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
 
   const { id } = await params
@@ -32,8 +32,6 @@ export async function PATCH(
   if (!VALID_STATUSES.includes(body.status))
     return NextResponse.json({ error: 'Stato non valido' }, { status: 400 })
 
-  // For needs_info: populate integration_note from board_note so the member
-  // sees the message in ResubmitPanel; clear it when approving/rejecting.
   const integration_note =
     body.status === 'needs_info' ? (body.board_note ?? null) : null
 
@@ -52,7 +50,6 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Per-item board notes
   if (body.item_notes?.length) {
     for (const { id: itemId, board_note } of body.item_notes) {
       if (board_note === null || board_note === undefined) continue

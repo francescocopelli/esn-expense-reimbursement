@@ -4,14 +4,20 @@ import { useState } from 'react'
 import type { Profile } from '@/lib/types'
 
 export default function UsersClient({ initialUsers }: { initialUsers: Profile[] }) {
-  const [users, setUsers]   = useState<Profile[]>(initialUsers)
-  const [search, setSearch] = useState('')
-  const [saving, setSaving] = useState<string | null>(null)
+  const [users, setUsers]     = useState<Profile[]>(initialUsers)
+  const [search, setSearch]   = useState('')
+  const [saving, setSaving]   = useState<string | null>(null)
+  const [toast, setToast]     = useState<{ id: string; ok: boolean } | null>(null)
 
   const filtered = users.filter(u =>
     u.full_name.toLowerCase().includes(search.toLowerCase()) ||
     u.section.toLowerCase().includes(search.toLowerCase())
   )
+
+  const showToast = (id: string, ok: boolean) => {
+    setToast({ id, ok })
+    setTimeout(() => setToast(null), 2500)
+  }
 
   const changeRole = async (id: string, role: string) => {
     setSaving(id)
@@ -22,6 +28,9 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
     })
     if (res.ok) {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, role: role as Profile['role'] } : u))
+      showToast(id, true)
+    } else {
+      showToast(id, false)
     }
     setSaving(null)
   }
@@ -44,10 +53,7 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
           <table className="table">
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>Sezione</th>
-                <th>Ruolo</th>
-                <th>Registrato il</th>
+                <th>Nome</th><th>Sezione</th><th>Ruolo</th><th>Registrato il</th>
               </tr>
             </thead>
             <tbody>
@@ -56,17 +62,27 @@ export default function UsersClient({ initialUsers }: { initialUsers: Profile[] 
                   <td><strong>{u.full_name}</strong></td>
                   <td>{u.section}</td>
                   <td>
-                    <select
-                      className="form-select"
-                      style={{ width: 'auto', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
-                      value={u.role}
-                      disabled={saving === u.id}
-                      onChange={e => changeRole(u.id, e.target.value)}
-                    >
-                      <option value="member">Membro</option>
-                      <option value="board">Board</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <select
+                        className="form-select"
+                        style={{ width: 'auto', padding: '0.2rem 0.5rem', fontSize: '0.875rem' }}
+                        value={u.role}
+                        disabled={saving === u.id}
+                        onChange={e => changeRole(u.id, e.target.value)}
+                      >
+                        <option value="member">Membro</option>
+                        <option value="board">Board</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      {saving === u.id && (
+                        <span style={{ fontSize: '0.75rem', color: '#6c757d' }}>Salvataggio...</span>
+                      )}
+                      {toast?.id === u.id && (
+                        <span style={{ fontSize: '0.75rem', color: toast.ok ? '#198754' : '#dc3545', fontWeight: 600 }}>
+                          {toast.ok ? '✓ Salvato' : '✗ Errore'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ color: '#6c757d', fontSize: '0.875rem' }}>
                     {new Date(u.created_at).toLocaleDateString('it-IT')}

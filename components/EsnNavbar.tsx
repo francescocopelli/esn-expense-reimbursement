@@ -16,8 +16,7 @@ export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavb
   const close = () => setOpen(false)
 
   const homePath =
-    role === 'admin' ? '/dashboard/admin' :
-    role === 'board' ? '/dashboard/board' : '/dashboard/member'
+    role === 'admin' ? '/dashboard/admin' : '/dashboard/my_reimbursement'
 
   return (
     <>
@@ -44,14 +43,11 @@ export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavb
           >
             {open ? (
               <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="3" x2="19" y2="19" />
-                <line x1="19" y1="3" x2="3" y2="19" />
+                <line x1="3" y1="3" x2="19" y2="19" /><line x1="19" y1="3" x2="3" y2="19" />
               </svg>
             ) : (
               <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="5"  x2="19" y2="5" />
-                <line x1="3" y1="11" x2="19" y2="11" />
-                <line x1="3" y1="17" x2="19" y2="17" />
+                <line x1="3" y1="5" x2="19" y2="5" /><line x1="3" y1="11" x2="19" y2="11" /><line x1="3" y1="17" x2="19" y2="17" />
               </svg>
             )}
           </button>
@@ -105,19 +101,19 @@ function NavItems({
 
       {role === 'admin' ? (
         <>
-          <li><Link href="/dashboard/admin"          className={linkClass} onClick={onClick}>Dashboard</Link></li>
-          <li><Link href="/dashboard/admin/users"    className={linkClass} onClick={onClick}>Utenti</Link></li>
-          <li><Link href="/dashboard/admin/sections" className={linkClass} onClick={onClick}>Sezioni</Link></li>
-          <li><Link href="/dashboard/admin/categories" className={linkClass} onClick={onClick}>Categorie</Link></li>
-          <li><Link href="/dashboard/admin/reports"  className={linkClass} onClick={onClick}>Report</Link></li>
+          <li><Link href="/dashboard/admin"              className={linkClass} onClick={onClick}>Dashboard</Link></li>
+          <li><Link href="/dashboard/admin/users"        className={linkClass} onClick={onClick}>Utenti</Link></li>
+          <li><Link href="/dashboard/admin/sections"     className={linkClass} onClick={onClick}>Sezioni</Link></li>
+          <li><Link href="/dashboard/admin/categories"   className={linkClass} onClick={onClick}>Categorie</Link></li>
+          <li><Link href="/dashboard/admin/reports"      className={linkClass} onClick={onClick}>Report</Link></li>
         </>
       ) : role === 'board' ? (
         <>
-          <li><Link href="/dashboard/board"  className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
-          <li><Link href="/dashboard/review" className={linkClass} onClick={onClick}>Revisione</Link></li>
+          <li><Link href="/dashboard/my_reimbursement"      className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
+          <li><Link href="/dashboard/review_reimbursement"  className={linkClass} onClick={onClick}>Revisione</Link></li>
         </>
       ) : (
-        <li><Link href="/dashboard/member" className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
+        <li><Link href="/dashboard/my_reimbursement" className={linkClass} onClick={onClick}>I Miei Rimborsi</Link></li>
       )}
 
       {!mobile && (

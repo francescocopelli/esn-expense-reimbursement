@@ -1,7 +1,6 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import EsnNavbar from '@/components/EsnNavbar'
 
 const NAV = [
@@ -21,10 +20,9 @@ export default function AdminLayoutClient({
 }) {
   const pathname = usePathname()
   const router   = useRouter()
-  const supabase = createClient()
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/auth/login')
   }
 
@@ -43,11 +41,8 @@ export default function AdminLayoutClient({
               ? pathname === href
               : pathname.startsWith(href)
             return (
-              <a
-                key={href}
-                href={href}
-                className={`admin-sidebar-link${isActive ? ' active' : ''}`}
-              >
+              <a key={href} href={href}
+                className={`admin-sidebar-link${isActive ? ' active' : ''}`}>
                 {label}
               </a>
             )
