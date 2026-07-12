@@ -1,5 +1,5 @@
 export type Role = 'member' | 'board'
-export type Status = 'pending' | 'approved' | 'rejected'
+export type Status = 'pending' | 'approved' | 'rejected' | 'needs_info'
 export type Category = 'Trasporti' | 'Catering' | 'Materiali' | 'Alloggio' | 'Altro'
 
 export interface Profile {
@@ -38,8 +38,8 @@ export interface ExpenseItem {
   title: string
   category: Category
   amount: number
-  note: string | null        // nota del membro al momento dell'invio
-  board_note: string | null  // nota del revisore
+  note: string | null
+  board_note: string | null
   receipt_url: string | null
   created_at: string
 }
@@ -51,6 +51,7 @@ export interface ExpenseReport {
   event_name: string
   status: Status
   board_note: string | null
+  integration_note: string | null  // board message when sending back for integration
   reviewed_by: string | null
   created_at: string
   updated_at: string
@@ -59,21 +60,19 @@ export interface ExpenseReport {
 }
 
 export const CATEGORIES: Category[] = [
-  'Trasporti',
-  'Catering',
-  'Materiali',
-  'Alloggio',
-  'Altro',
+  'Trasporti', 'Catering', 'Materiali', 'Alloggio', 'Altro',
 ]
 
 export const STATUS_LABELS: Record<Status, string> = {
-  pending: 'In Attesa',
-  approved: 'Approvata',
-  rejected: 'Rifiutata',
+  pending:    'In Attesa',
+  approved:   'Approvata',
+  rejected:   'Rifiutata',
+  needs_info: 'Integrare',
 }
 
 export const STATUS_COLORS: Record<Status, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  approved: 'bg-green-100 text-green-800 border-green-200',
-  rejected: 'bg-red-100 text-red-800 border-red-200',
+  pending:    'bg-yellow-100 text-yellow-800 border-yellow-200',
+  approved:   'bg-green-100 text-green-800 border-green-200',
+  rejected:   'bg-red-100 text-red-800 border-red-200',
+  needs_info: 'bg-orange-100 text-orange-800 border-orange-200',
 }

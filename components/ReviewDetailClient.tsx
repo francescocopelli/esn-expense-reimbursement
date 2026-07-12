@@ -14,18 +14,24 @@ interface Props {
 export default function ReviewDetailClient({ report, submitter }: Props) {
   const items = report.items ?? []
 
-  // per-item board notes keyed by item id
-  const [itemNotes, setItemNotes] = useState<Record<string, string>>(
+  const [itemNotes, setItemNotes]     = useState<Record<string, string>>(
     Object.fromEntries(items.map(item => [item.id, item.board_note ?? '']))
   )
-  const [globalNote, setGlobalNote] = useState(report.board_note ?? '')
-  const [loading, setLoading]       = useState(false)
+  const [globalNote, setGlobalNote]   = useState(report.board_note ?? '')
+  const [integrationNote, setIntNote] = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [integrationErr, setIntErr]   = useState<string | null>(null)
   const router = useRouter()
 
   const totalAmount = items.reduce((sum, item) => sum + Number(item.amount), 0)
   const isPending   = report.status === 'pending'
 
-  const handleReview = async (status: 'approved' | 'rejected') => {
+  const submit = async (status: 'approved' | 'rejected' | 'needs_info') => {
+    if (status === 'needs_info' && !integrationNote.trim()) {
+      setIntErr('Inserisci una nota che spieghi cosa manca al membro.')
+      return
+    }
+    setIntErr(null)
     setLoading(true)
 
     const item_notes = items.map(item => ({
@@ -36,7 +42,12 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
     await fetch(`/api/reports/${report.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, board_note: globalNote.trim() || null, item_notes }),
+      body: JSON.stringify({
+        status,
+        board_note:       globalNote.trim() || null,
+        integration_note: status === 'needs_info' ? integrationNote.trim() : null,
+        item_notes,
+      }),
     })
 
     setLoading(false)
@@ -65,7 +76,7 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
         <div className="card-header">
           <h3 style={{ margin: 0 }}>Voci di Spesa</h3>
         </div>
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
           <table className="table">
             <thead>
               <tr>
@@ -75,7 +86,7 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
                 <th>Nota membro</th>
                 <th style={{ textAlign: 'right' }}>Importo</th>
                 <th style={{ textAlign: 'center' }}>Ricevuta</th>
-                {isPending && <th style={{ minWidth: 200 }}>Nota revisore</th>}
+                <th style={{ minWidth: 200 }}>Nota revisore</th>
               </tr>
             </thead>
             <tbody>
@@ -98,63 +109,85 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
                           style={{ color: '#0d6efd', textDecoration: 'none' }}>📎 Apri</a>
                       : <span style={{ color: '#aaa' }}>—</span>}
                   </td>
-                  {isPending && (
-                    <td>
+                  <td>
+                    {isPending ? (
                       <textarea
-                        className="form-control"
-                        rows={2}
+                        className="form-control" rows={2}
                         style={{ fontSize: '0.8rem', minWidth: 180 }}
                         placeholder="Nota su questa voce..."
                         value={itemNotes[item.id] ?? ''}
                         onChange={e => setItemNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
                       />
-                    </td>
-                  )}
-                  {!isPending && (
-                    <td style={{ fontSize: '0.875rem', color: '#495057' }}>
-                      {item.board_note || <span style={{ color: '#aaa' }}>—</span>}
-                    </td>
-                  )}
+                    ) : (
+                      <span style={{ fontSize: '0.875rem', color: '#495057' }}>
+                        {item.board_note || <span style={{ color: '#aaa' }}>—</span>}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr style={{ background: '#f8f9fa', fontWeight: 700 }}>
-                <td colSpan={isPending ? 6 : 5} style={{ textAlign: 'right', padding: '0.75rem 1rem' }}>Totale</td>
+                <td colSpan={5} style={{ textAlign: 'right', padding: '0.75rem 1rem' }}>Totale</td>
                 <td style={{ textAlign: 'right', padding: '0.75rem 1rem', fontSize: '1.05rem', color: '#0d6efd' }}>
                   €{totalAmount.toFixed(2)}
                 </td>
+                <td />
               </tr>
             </tfoot>
           </table>
         </div>
       </div>
 
-      {/* Review form */}
+      {/* Decision / review-already-done */}
       {isPending ? (
         <div className="card">
           <div className="card-header"><h3 style={{ margin: 0 }}>Decisione</h3></div>
           <div className="card-body">
+
             <div className="form-group">
               <label className="form-label">
                 Nota globale per il membro{' '}
                 <span style={{ color: '#6c757d', fontWeight: 400 }}>(opzionale)</span>
               </label>
-              <textarea className="form-control" rows={3}
+              <textarea className="form-control" rows={2}
                 placeholder="Nota generale sul rimborso..."
                 value={globalNote}
                 onChange={e => setGlobalNote(e.target.value)}
               />
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-              <button className="btn btn-esn-cyan" disabled={loading}
-                onClick={() => handleReview('approved')}>
+
+            {/* Integration note — shown always so board can fill it before clicking */}
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label">
+                Nota richiesta integrazione{' '}
+                <span style={{ color: '#6c757d', fontWeight: 400 }}>(obbligatoria se si rimanda indietro)</span>
+              </label>
+              <textarea className="form-control" rows={3}
+                placeholder="es. Manca la ricevuta della voce 2, si prega di allegarla..."
+                value={integrationNote}
+                onChange={e => { setIntErr(null); setIntNote(e.target.value) }}
+                style={{ borderColor: integrationErr ? '#dc3545' : undefined }}
+              />
+              {integrationErr && (
+                <p style={{ color: '#dc3545', fontSize: '0.85rem', marginTop: '0.25rem' }}>{integrationErr}</p>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <button className="btn btn-esn-cyan" disabled={loading} onClick={() => submit('approved')}>
                 ✅ Approva
               </button>
               <button className="btn" disabled={loading}
                 style={{ background: '#dc3545', color: '#fff', border: 'none' }}
-                onClick={() => handleReview('rejected')}>
+                onClick={() => submit('rejected')}>
                 ❌ Rifiuta
+              </button>
+              <button className="btn" disabled={loading}
+                style={{ background: '#fd7e14', color: '#fff', border: 'none' }}
+                onClick={() => submit('needs_info')}>
+                ↩ Richiedi Integrazione
               </button>
             </div>
           </div>
@@ -165,6 +198,11 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
             {report.board_note && (
               <div style={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
                 <strong>Nota board:</strong> {report.board_note}
+              </div>
+            )}
+            {report.integration_note && (
+              <div style={{ background: '#fff3e0', border: '1px solid #ffb74d', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
+                <strong>Nota integrazione:</strong> {report.integration_note}
               </div>
             )}
             <p style={{ color: '#6c757d', margin: 0, fontSize: '0.9rem' }}>
