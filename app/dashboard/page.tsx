@@ -12,6 +12,7 @@ export default async function DashboardRedirect() {
     .eq('id', user.id)
     .single()
 
+  if (profile?.role === 'admin') redirect('/dashboard/admin')
   if (profile?.role === 'board') redirect('/dashboard/board')
   redirect('/dashboard/member')
 }
