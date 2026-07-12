@@ -2,10 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import BoardDashboard from '@/components/BoardDashboard'
 
-/**
- * /dashboard/review — mostra solo le richieste in attesa al board.
- * Usa fetch in due step per evitare problemi di RLS sui join FK di PostgREST.
- */
 export default async function ReviewPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -19,38 +15,34 @@ export default async function ReviewPage() {
 
   if (!profile || profile.role !== 'board') redirect('/dashboard/member')
 
-  // Step 1: solo richieste pending
-  const { data: requests, error: reqError } = await supabase
-    .from('expense_requests')
-    .select('*')
+  // Solo rimborsi pending
+  const { data: reports, error: repError } = await supabase
+    .from('expense_reports')
+    .select('*, expense_items(*)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  if (reqError) console.error('[review] fetch requests error:', reqError.message)
+  if (repError) console.error('[review] fetch reports error:', repError.message)
 
-  const rows = requests ?? []
+  const rows = reports ?? []
 
-  // Step 2: batch-fetch profili
-  // Array.from(new Set(...)) instead of [...new Set(...)] for ES5 compat
-  const userIds = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)))
+  const userIds = Array.from(new Set(rows.map((r: { user_id: string }) => r.user_id).filter(Boolean)))
 
-  const { data: memberProfiles, error: profError } = userIds.length > 0
+  const { data: memberProfiles } = userIds.length > 0
     ? await supabase
         .from('profiles')
         .select('id, full_name, section')
         .in('id', userIds)
-    : { data: [], error: null }
-
-  if (profError) console.error('[review] fetch profiles error:', profError.message)
+    : { data: [] }
 
   const profileMap = Object.fromEntries(
-    (memberProfiles ?? []).map(p => [p.id, { full_name: p.full_name, section: p.section }])
+    (memberProfiles ?? []).map((p: { id: string; full_name: string; section: string }) => [p.id, { full_name: p.full_name, section: p.section }])
   )
 
-  const enrichedRequests = rows.map(r => ({
+  const enrichedReports = rows.map((r: Record<string, unknown>) => ({
     ...r,
-    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '\u2014' },
+    profiles: profileMap[r.user_id as string] ?? { full_name: 'Utente sconosciuto', section: '\u2014' },
   }))
 
-  return <BoardDashboard profile={profile} requests={enrichedRequests} />
+  return <BoardDashboard profile={profile} reports={enrichedReports} />
 }

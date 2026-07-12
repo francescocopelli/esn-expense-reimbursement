@@ -7,38 +7,21 @@ export default async function MemberPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  let { data: profile } = await supabase
+  const { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  // Fallback: if profile is missing, create it from auth metadata
-  if (!profile) {
-    const metadata = user.user_metadata ?? {}
-    const fallbackProfile = {
-      id: user.id,
-      full_name: metadata.full_name || user.email?.split('@')[0] || 'Utente ESN',
-      section: metadata.section || 'ESN Pisa',
-      role: metadata.role === 'board' ? 'board' : 'member',
-    }
+  if (!profile) redirect('/auth/login')
+  if (profile.role === 'board') redirect('/dashboard/board')
 
-    const { data: inserted } = await supabase
-      .from('profiles')
-      .upsert(fallbackProfile, { onConflict: 'id' })
-      .select('*')
-      .single()
-
-    profile = inserted ?? fallbackProfile
-  }
-
-  if (profile?.role === 'board') redirect('/dashboard/board')
-
-  const { data: requests } = await supabase
-    .from('expense_requests')
-    .select('*')
+  // Fetch reports with items
+  const { data: reports } = await supabase
+    .from('expense_reports')
+    .select('*, expense_items(*)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  return <MemberDashboard profile={profile} requests={requests ?? []} />
+  return <MemberDashboard profile={profile} reports={reports ?? []} />
 }

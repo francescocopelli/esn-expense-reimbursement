@@ -11,6 +11,7 @@ export interface Profile {
   updated_at: string
 }
 
+/** Legacy — mantenuto per backward compat con expense_requests */
 export interface ExpenseRequest {
   id: string
   user_id: string
@@ -24,12 +25,40 @@ export interface ExpenseRequest {
   reviewed_by: string | null
   created_at: string
   updated_at: string
-  // joined fields
   profiles?: Profile
 }
 
 export interface ExpenseRequestWithProfile extends ExpenseRequest {
   profiles: Profile
+}
+
+// ============================================================
+// NEW: Expense Reports + Items
+// ============================================================
+
+export interface ExpenseItem {
+  id: string
+  report_id: string
+  title: string
+  category: Category
+  amount: number
+  receipt_url: string | null
+  created_at: string
+}
+
+export interface ExpenseReport {
+  id: string
+  report_number: string   // ESN-YYYY-NNNN
+  user_id: string
+  event_name: string
+  status: Status
+  board_note: string | null
+  reviewed_by: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  items?: ExpenseItem[]
+  profiles?: Pick<Profile, 'id' | 'full_name' | 'section'>
 }
 
 export const CATEGORIES: Category[] = [
