@@ -11,7 +11,7 @@ export interface Profile {
   updated_at: string
 }
 
-/** Legacy — mantenuto per backward compat con expense_requests */
+/** Legacy */
 export interface ExpenseRequest {
   id: string
   user_id: string
@@ -38,7 +38,8 @@ export interface ExpenseItem {
   title: string
   category: Category
   amount: number
-  note: string | null
+  note: string | null        // nota del membro al momento dell'invio
+  board_note: string | null  // nota del revisore
   receipt_url: string | null
   created_at: string
 }

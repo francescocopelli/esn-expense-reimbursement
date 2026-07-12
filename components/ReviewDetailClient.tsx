@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ExpenseReport } from '@/lib/types'
+import type { ExpenseReport, ExpenseItem } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
 
 interface Props {
@@ -11,23 +11,34 @@ interface Props {
   reviewerName: string
 }
 
-export default function ReviewDetailClient({ report, submitter, reviewerName }: Props) {
-  const [note, setNote]     = useState(report.board_note ?? '')
-  const [loading, setLoading] = useState(false)
-  const [done, setDone]     = useState(false)
+export default function ReviewDetailClient({ report, submitter }: Props) {
+  const items = report.items ?? []
+
+  // per-item board notes keyed by item id
+  const [itemNotes, setItemNotes] = useState<Record<string, string>>(
+    Object.fromEntries(items.map(item => [item.id, item.board_note ?? '']))
+  )
+  const [globalNote, setGlobalNote] = useState(report.board_note ?? '')
+  const [loading, setLoading]       = useState(false)
   const router = useRouter()
 
-  const totalAmount = (report.items ?? []).reduce((sum, item) => sum + Number(item.amount), 0)
+  const totalAmount = items.reduce((sum, item) => sum + Number(item.amount), 0)
   const isPending   = report.status === 'pending'
 
   const handleReview = async (status: 'approved' | 'rejected') => {
     setLoading(true)
+
+    const item_notes = items.map(item => ({
+      id: item.id,
+      board_note: itemNotes[item.id]?.trim() || null,
+    }))
+
     await fetch(`/api/reports/${report.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, board_note: note }),
+      body: JSON.stringify({ status, board_note: globalNote.trim() || null, item_notes }),
     })
-    setDone(true)
+
     setLoading(false)
     router.push('/dashboard/review')
   }
@@ -58,21 +69,26 @@ export default function ReviewDetailClient({ report, submitter, reviewerName }: 
           <table className="table">
             <thead>
               <tr>
-                <th>#</th>
+                <th style={{ width: 32 }}>#</th>
                 <th>Titolo</th>
                 <th>Categoria</th>
-                <th>Nota</th>
+                <th>Nota membro</th>
                 <th style={{ textAlign: 'right' }}>Importo</th>
                 <th style={{ textAlign: 'center' }}>Ricevuta</th>
+                {isPending && <th style={{ minWidth: 200 }}>Nota revisore</th>}
               </tr>
             </thead>
             <tbody>
-              {(report.items ?? []).map((item, idx) => (
+              {items.map((item: ExpenseItem, idx: number) => (
                 <tr key={item.id}>
                   <td style={{ color: '#6c757d', fontSize: '0.85rem' }}>{idx + 1}</td>
                   <td><strong>{item.title}</strong></td>
-                  <td><span style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{item.category}</span></td>
-                  <td style={{ color: '#495057', fontSize: '0.875rem', maxWidth: 200 }}>
+                  <td>
+                    <span style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: 12, fontSize: '0.8rem' }}>
+                      {item.category}
+                    </span>
+                  </td>
+                  <td style={{ color: '#495057', fontSize: '0.875rem', maxWidth: 180 }}>
                     {item.note || <span style={{ color: '#aaa' }}>—</span>}
                   </td>
                   <td style={{ textAlign: 'right', fontWeight: 600 }}>€{Number(item.amount).toFixed(2)}</td>
@@ -82,16 +98,32 @@ export default function ReviewDetailClient({ report, submitter, reviewerName }: 
                           style={{ color: '#0d6efd', textDecoration: 'none' }}>📎 Apri</a>
                       : <span style={{ color: '#aaa' }}>—</span>}
                   </td>
+                  {isPending && (
+                    <td>
+                      <textarea
+                        className="form-control"
+                        rows={2}
+                        style={{ fontSize: '0.8rem', minWidth: 180 }}
+                        placeholder="Nota su questa voce..."
+                        value={itemNotes[item.id] ?? ''}
+                        onChange={e => setItemNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      />
+                    </td>
+                  )}
+                  {!isPending && (
+                    <td style={{ fontSize: '0.875rem', color: '#495057' }}>
+                      {item.board_note || <span style={{ color: '#aaa' }}>—</span>}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr style={{ background: '#f8f9fa', fontWeight: 700 }}>
-                <td colSpan={4} style={{ textAlign: 'right', padding: '0.75rem 1rem' }}>Totale</td>
+                <td colSpan={isPending ? 6 : 5} style={{ textAlign: 'right', padding: '0.75rem 1rem' }}>Totale</td>
                 <td style={{ textAlign: 'right', padding: '0.75rem 1rem', fontSize: '1.05rem', color: '#0d6efd' }}>
                   €{totalAmount.toFixed(2)}
                 </td>
-                <td />
               </tr>
             </tfoot>
           </table>
@@ -99,16 +131,19 @@ export default function ReviewDetailClient({ report, submitter, reviewerName }: 
       </div>
 
       {/* Review form */}
-      {isPending && !done ? (
+      {isPending ? (
         <div className="card">
           <div className="card-header"><h3 style={{ margin: 0 }}>Decisione</h3></div>
           <div className="card-body">
             <div className="form-group">
-              <label className="form-label">Nota per il membro <span style={{ color: '#6c757d', fontWeight: 400 }}>(opzionale)</span></label>
+              <label className="form-label">
+                Nota globale per il membro{' '}
+                <span style={{ color: '#6c757d', fontWeight: 400 }}>(opzionale)</span>
+              </label>
               <textarea className="form-control" rows={3}
-                placeholder="es. Manca la ricevuta della voce 2, richiedila al membro..."
-                value={note}
-                onChange={e => setNote(e.target.value)}
+                placeholder="Nota generale sul rimborso..."
+                value={globalNote}
+                onChange={e => setGlobalNote(e.target.value)}
               />
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
@@ -124,7 +159,7 @@ export default function ReviewDetailClient({ report, submitter, reviewerName }: 
             </div>
           </div>
         </div>
-      ) : !isPending ? (
+      ) : (
         <div className="card">
           <div className="card-body">
             {report.board_note && (
@@ -137,7 +172,7 @@ export default function ReviewDetailClient({ report, submitter, reviewerName }: 
             </p>
           </div>
         </div>
-      ) : null}
+      )}
     </>
   )
 }
