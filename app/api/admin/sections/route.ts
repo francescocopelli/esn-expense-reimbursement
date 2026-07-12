@@ -27,6 +27,18 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(data)
 }
 
+export async function PATCH(request: NextRequest) {
+  const { error, supabase } = await assertAdmin()
+  if (error) return error
+  const { id, name } = await request.json()
+  if (!id) return NextResponse.json({ error: 'ID mancante' }, { status: 400 })
+  if (!name?.trim()) return NextResponse.json({ error: 'Nome obbligatorio' }, { status: 400 })
+  const { data, error: dbErr } = await supabase!
+    .from('esn_sections').update({ name: name.trim() }).eq('id', id).select().single()
+  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 export async function DELETE(request: NextRequest) {
   const { error, supabase } = await assertAdmin()
   if (error) return error

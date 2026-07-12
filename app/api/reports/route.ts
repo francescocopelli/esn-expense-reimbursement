@@ -13,6 +13,12 @@ export async function POST(request: NextRequest) {
   const itemCount = parseInt(formData.get('item_count')?.toString() ?? '0', 10)
   if (itemCount < 1) return NextResponse.json({ error: 'Inserisci almeno una voce di spesa' }, { status: 400 })
 
+  // Fetch valid categories from DB for server-side validation
+  const { data: validCats } = await supabase.from('expense_categories').select('name, max_amount')
+  const catMap = new Map<string, number | null>(
+    (validCats ?? []).map(c => [c.name, c.max_amount])
+  )
+
   const { data: report, error: reportError } = await supabase
     .from('expense_reports')
     .insert({ user_id: user.id, event_name, report_number: '' })
@@ -32,6 +38,19 @@ export async function POST(request: NextRequest) {
 
     if (!title || !category || isNaN(amount) || amount <= 0) {
       itemErrors.push(`Voce ${i + 1}: campi obbligatori mancanti`)
+      continue
+    }
+
+    // Validate category exists in DB
+    if (!catMap.has(category)) {
+      itemErrors.push(`Voce ${i + 1}: categoria "${category}" non valida`)
+      continue
+    }
+
+    // Validate max_amount if set
+    const maxAmt = catMap.get(category)
+    if (maxAmt != null && amount > maxAmt) {
+      itemErrors.push(`Voce ${i + 1}: importo €${amount.toFixed(2)} supera il limite di €${maxAmt.toFixed(2)} per la categoria "${category}"`)
       continue
     }
 

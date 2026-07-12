@@ -3,16 +3,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { Profile, ExpenseReport } from '@/lib/types'
+import type { Profile, ExpenseReport, ExpenseCategory } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
-import ExpenseForm from '@/components/forms/ExpenseForm'
+import ExpenseFormClient from '@/components/forms/ExpenseFormClient'
 
 interface Props {
   profile: Profile
   reports: ExpenseReport[]
+  categories: ExpenseCategory[]
 }
 
-export default function MyExpensesPage({ profile, reports }: Props) {
+export default function MyExpensesPage({ profile, reports, categories }: Props) {
   const [showForm, setShowForm] = useState(false)
   const router = useRouter()
 
@@ -51,7 +52,10 @@ export default function MyExpensesPage({ profile, reports }: Props) {
 
         {showForm && (
           <div className="card-body">
-            <ExpenseForm onSuccess={() => { setShowForm(false); router.refresh() }} />
+            <ExpenseFormClient
+              categories={categories}
+              onSuccess={() => { setShowForm(false); router.refresh() }}
+            />
           </div>
         )}
       </div>
@@ -72,9 +76,7 @@ export default function MyExpensesPage({ profile, reports }: Props) {
           ) : (
             <table className="table">
               <thead>
-                <tr>
-                  <th>N° Rimborso</th><th>Evento</th><th>Voci</th><th>Totale</th><th>Stato</th><th>Data</th>
-                </tr>
+                <tr><th>N° Rimborso</th><th>Evento</th><th>Voci</th><th>Totale</th><th>Stato</th><th>Data</th></tr>
               </thead>
               <tbody>
                 {reports.map(r => (

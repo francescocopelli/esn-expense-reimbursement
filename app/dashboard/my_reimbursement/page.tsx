@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import MyExpensesPage from '@/components/MyExpensesPage'
+import type { ExpenseCategory } from '@/lib/types'
 
 export default async function MyReimbursementPage() {
   const supabase = await createClient()
@@ -12,11 +13,19 @@ export default async function MyReimbursementPage() {
   if (!profile) redirect('/auth/login')
   if (profile.role === 'admin') redirect('/dashboard/admin')
 
-  const { data: reports } = await supabase
-    .from('expense_reports')
-    .select('*, items:expense_items(*)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  const [{ data: reports }, { data: cats }] = await Promise.all([
+    supabase
+      .from('expense_reports')
+      .select('*, items:expense_items(*)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('expense_categories')
+      .select('id, name, max_amount, created_at')
+      .order('name'),
+  ])
 
-  return <MyExpensesPage profile={profile} reports={reports ?? []} />
+  const categories: ExpenseCategory[] = cats ?? []
+
+  return <MyExpensesPage profile={profile} reports={reports ?? []} categories={categories} />
 }

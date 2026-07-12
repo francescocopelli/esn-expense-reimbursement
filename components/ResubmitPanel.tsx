@@ -21,8 +21,7 @@ export default function ResubmitPanel({ reportId, integrationNote, items }: Prop
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
 
     const fd = new FormData()
     fd.append('item_count', String(items.length))
@@ -43,7 +42,7 @@ export default function ResubmitPanel({ reportId, integrationNote, items }: Prop
     }
 
     router.refresh()
-    router.push('/dashboard/member')
+    router.push('/dashboard/my_reimbursement')
   }
 
   return (
@@ -52,10 +51,7 @@ export default function ResubmitPanel({ reportId, integrationNote, items }: Prop
         <h3 style={{ margin: 0, color: '#a04000' }}>⚠️ Integrazione Richiesta</h3>
       </div>
       <div className="card-body">
-        <div style={{
-          background: '#fff8f0', border: '1px solid #ffb74d',
-          borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1.25rem',
-        }}>
+        <div style={{ background: '#fff8f0', border: '1px solid #ffb74d', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1.25rem' }}>
           <strong style={{ color: '#a04000' }}>Messaggio dal revisore:</strong>
           <p style={{ margin: '0.5rem 0 0', color: '#5a3000' }}>{integrationNote}</p>
         </div>
@@ -67,10 +63,7 @@ export default function ResubmitPanel({ reportId, integrationNote, items }: Prop
 
         <form onSubmit={handleSubmit}>
           {items.map((item, idx) => (
-            <div key={item.id} style={{
-              border: '1px solid #dee2e6', borderRadius: 8,
-              padding: '0.875rem', marginBottom: '0.75rem', background: '#fafafa',
-            }}>
+            <div key={item.id} style={{ border: '1px solid #dee2e6', borderRadius: 8, padding: '0.875rem', marginBottom: '0.75rem', background: '#fafafa' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <strong style={{ fontSize: '0.9rem' }}>
                   {idx + 1}. {item.title}
@@ -78,8 +71,7 @@ export default function ResubmitPanel({ reportId, integrationNote, items }: Prop
                   {' '}<span style={{ color: '#0d6efd', fontWeight: 700, fontSize: '0.9rem' }}>€{Number(item.amount).toFixed(2)}</span>
                 </strong>
                 {item.receipt_url && (
-                  <a href={item.receipt_url} target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: '0.8rem', color: '#0d6efd' }}>📎 Ricevuta attuale</a>
+                  <a href={item.receipt_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#0d6efd' }}>📎 Ricevuta attuale</a>
                 )}
               </div>
 
@@ -93,15 +85,13 @@ export default function ResubmitPanel({ reportId, integrationNote, items }: Prop
                 <label className="form-label" style={{ fontSize: '0.85rem' }}>Aggiorna nota</label>
                 <textarea className="form-control" rows={2} style={{ fontSize: '0.85rem' }}
                   value={notes[item.id] ?? ''}
-                  onChange={e => setNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
-                />
+                  onChange={e => setNotes(prev => ({ ...prev, [item.id]: e.target.value }))} />
               </div>
 
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.85rem' }}>Carica nuova ricevuta</label>
                 <input type="file" accept="image/*,.pdf" className="form-control"
-                  onChange={e => setFiles(prev => ({ ...prev, [item.id]: e.target.files?.[0] ?? null }))}
-                />
+                  onChange={e => setFiles(prev => ({ ...prev, [item.id]: e.target.files?.[0] ?? null }))} />
               </div>
             </div>
           ))}

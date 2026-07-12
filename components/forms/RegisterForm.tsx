@@ -1,27 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
+interface Section { id: string; name: string }
+
 export default function RegisterForm() {
   const [fullName,   setFullName]   = useState('')
-  const [section,    setSection]    = useState('ESN Pisa')
+  const [section,    setSection]    = useState('')
   const [email,      setEmail]      = useState('')
   const [password,   setPassword]   = useState('')
   const [error,      setError]      = useState<string | null>(null)
   const [info,       setInfo]       = useState<string | null>(null)
   const [loading,    setLoading]    = useState(false)
+  const [sections,   setSections]   = useState<Section[]>([])
+  const [secLoading, setSecLoading] = useState(true)
+
   const router   = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+    fetch('/api/public/sections')
+      .then(r => r.json())
+      .then((data: Section[]) => {
+        setSections(data)
+        if (data.length > 0) setSection(data[0].name)
+      })
+      .catch(() => setSections([]))
+      .finally(() => setSecLoading(false))
+  }, [])
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setInfo(null)
+    setLoading(true); setError(null); setInfo(null)
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -30,15 +44,12 @@ export default function RegisterForm() {
     })
 
     if (error) {
-      // Rate limit esplicito
       if (
         error.message.toLowerCase().includes('rate limit') ||
         error.message.toLowerCase().includes('email rate') ||
         error.status === 429
       ) {
-        setError(
-          'Troppi tentativi di registrazione. Attendi qualche minuto e riprova, oppure contatta un amministratore.'
-        )
+        setError('Troppi tentativi di registrazione. Attendi qualche minuto e riprova, oppure contatta un amministratore.')
       } else {
         setError(error.message)
       }
@@ -46,16 +57,12 @@ export default function RegisterForm() {
       return
     }
 
-    // Se la sessione è già attiva (email confirm disabilitata) → redirect diretto
     if (data.session) {
-      router.push('/dashboard/member')
+      router.push('/dashboard/my_reimbursement')
       return
     }
 
-    // Se email confirm è abilitata → mostra messaggio senza bloccare
-    setInfo(
-      `Registrazione completata! Controlla la casella “${email}” e clicca il link di conferma per accedere.`
-    )
+    setInfo(`Registrazione completata! Controlla la casella "${email}" e clicca il link di conferma per accedere.`)
     setLoading(false)
   }
 
@@ -69,9 +76,9 @@ export default function RegisterForm() {
         </div>
 
         {info ? (
-          <div className="alert alert-success" style={{marginTop: '1rem'}}>
+          <div className="alert alert-success" style={{ marginTop: '1rem' }}>
             <strong>✅ Quasi fatto!</strong><br />{info}
-            <div style={{marginTop:'1rem'}}>
+            <div style={{ marginTop: '1rem' }}>
               <Link href="/auth/login" className="btn btn-esn-cyan w-full">Vai al login</Link>
             </div>
           </div>
@@ -86,9 +93,22 @@ export default function RegisterForm() {
 
             <div className="form-group">
               <label className="form-label" htmlFor="section">Sezione ESN</label>
-              <input id="section" type="text" value={section}
-                onChange={e => setSection(e.target.value)}
-                required className="form-control" placeholder="ESN Pisa" />
+              {secLoading ? (
+                <select className="form-select" disabled><option>Caricamento...</option></select>
+              ) : sections.length > 0 ? (
+                <select id="section" className="form-select" value={section}
+                  onChange={e => setSection(e.target.value)} required>
+                  <option value="">Seleziona la tua sezione...</option>
+                  {sections.map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              ) : (
+                // Fallback: free text if no sections configured yet
+                <input id="section" type="text" value={section}
+                  onChange={e => setSection(e.target.value)}
+                  required className="form-control" placeholder="es. ESN Pisa" />
+              )}
             </div>
 
             <div className="form-group">
@@ -108,7 +128,7 @@ export default function RegisterForm() {
 
             {error && <div className="login-error">{error}</div>}
 
-            <button type="submit" disabled={loading} className="btn btn-esn-cyan w-full btn-lg">
+            <button type="submit" disabled={loading || !section} className="btn btn-esn-cyan w-full btn-lg">
               {loading ? 'Registrazione in corso...' : 'Registrati'}
             </button>
           </form>
@@ -116,7 +136,7 @@ export default function RegisterForm() {
 
         <p className="login-footnote">
           Hai già un account?{' '}
-          <Link href="/auth/login" style={{color:'var(--esn-dark-blue)', fontWeight:600}}>Accedi</Link>
+          <Link href="/auth/login" style={{ color: 'var(--esn-dark-blue)', fontWeight: 600 }}>Accedi</Link>
         </p>
       </div>
     </div>

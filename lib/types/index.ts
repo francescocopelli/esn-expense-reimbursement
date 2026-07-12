@@ -1,6 +1,6 @@
 export type Role   = 'member' | 'board' | 'admin'
 export type Status = 'pending' | 'approved' | 'rejected' | 'needs_info'
-export type Category = string   // now dynamic from expense_categories table
+export type Category = string  // dynamic from expense_categories table
 
 export interface Profile {
   id: string
@@ -22,27 +22,6 @@ export interface ExpenseCategory {
   name: string
   max_amount: number | null
   created_at: string
-}
-
-/** Legacy */
-export interface ExpenseRequest {
-  id: string
-  user_id: string
-  event_name: string
-  category: Category
-  amount: number
-  description: string | null
-  receipt_url: string | null
-  status: Status
-  board_note: string | null
-  reviewed_by: string | null
-  created_at: string
-  updated_at: string
-  profiles?: Profile
-}
-
-export interface ExpenseRequestWithProfile extends ExpenseRequest {
-  profiles: Profile
 }
 
 export interface ExpenseItem {
@@ -71,10 +50,6 @@ export interface ExpenseReport {
   items?: ExpenseItem[]
   profiles?: Pick<Profile, 'id' | 'full_name' | 'section'>
 }
-
-export const CATEGORIES: Category[] = [
-  'Trasporti', 'Catering', 'Materiali', 'Alloggio', 'Altro',
-]
 
 export const STATUS_LABELS: Record<Status, string> = {
   pending:    'In Attesa',
