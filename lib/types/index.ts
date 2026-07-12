@@ -32,23 +32,20 @@ export interface ExpenseRequestWithProfile extends ExpenseRequest {
   profiles: Profile
 }
 
-// ============================================================
-// NEW: Expense Reports + Items
-// ============================================================
-
 export interface ExpenseItem {
   id: string
   report_id: string
   title: string
   category: Category
   amount: number
+  note: string | null
   receipt_url: string | null
   created_at: string
 }
 
 export interface ExpenseReport {
   id: string
-  report_number: string   // ESN-YYYY-NNNN
+  report_number: string
   user_id: string
   event_name: string
   status: Status
@@ -56,7 +53,6 @@ export interface ExpenseReport {
   reviewed_by: string | null
   created_at: string
   updated_at: string
-  // joined
   items?: ExpenseItem[]
   profiles?: Pick<Profile, 'id' | 'full_name' | 'section'>
 }

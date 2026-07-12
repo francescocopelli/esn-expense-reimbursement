@@ -17,13 +17,10 @@ export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavb
 
       <header className="navbar">
         <div className="container">
-          <Link href="/dashboard" className="navbar-brand">
+          {/* Brand — click goes to role-specific dashboard */}
+          <Link href={role === 'board' ? '/dashboard/board' : '/dashboard/member'} className="navbar-brand">
             <Image
-              src="/logo.svg"
-              alt="ESN Logo"
-              width={120}
-              height={48}
-              priority
+              src="/logo.svg" alt="ESN Logo" width={120} height={48} priority
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
             />
             <div className="navbar-brand-text">
@@ -39,23 +36,18 @@ export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavb
                   {role === 'board' ? (
                     <>
                       <li>
-                        <Link href="/dashboard/board" className="nav-link">
-                          I Miei Rimborsi
-                        </Link>
+                        <Link href="/dashboard/board" className="nav-link">I Miei Rimborsi</Link>
                       </li>
                       <li>
-                        <Link href="/dashboard/review" className="nav-link">
-                          Revisione
-                        </Link>
+                        <Link href="/dashboard/review" className="nav-link">Revisione</Link>
                       </li>
                     </>
                   ) : (
                     <li>
-                      <Link href="/dashboard/member" className="nav-link">
-                        Dashboard
-                      </Link>
+                      <Link href="/dashboard/member" className="nav-link">I Miei Rimborsi</Link>
                     </li>
                   )}
+
                   <li>
                     <div className="user-info">
                       <span className="user-name">{userName}</span>
@@ -66,19 +58,16 @@ export default function EsnNavbar({ userName, section, role, onLogout }: EsnNavb
                       )}
                     </div>
                   </li>
+
                   {onLogout && (
                     <li>
-                      <button onClick={onLogout} className="btn btn-sm btn-outline-gray">
-                        Esci
-                      </button>
+                      <button onClick={onLogout} className="btn btn-sm btn-outline-gray">Esci</button>
                     </li>
                   )}
                 </>
               ) : (
                 <li>
-                  <Link href="/auth/login" className="btn btn-sm btn-esn-cyan">
-                    Accedi
-                  </Link>
+                  <Link href="/auth/login" className="btn btn-sm btn-esn-cyan">Accedi</Link>
                 </li>
               )}
             </ul>

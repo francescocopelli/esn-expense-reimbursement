@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import Link from 'next/link'
 import type { Profile, ExpenseReport, Status } from '@/lib/types'
 import StatusBadge from '@/components/StatusBadge'
@@ -16,9 +16,6 @@ type FilterStatus = Status | 'all'
 export default function BoardDashboard({ profile, reports }: Props) {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [filterMember, setFilterMember] = useState('')
-  const [reviewing, setReviewing]       = useState<string | null>(null)
-  const [note, setNote]                 = useState('')
-  const [loading, setLoading]           = useState(false)
   const router = useRouter()
 
   const totalAmount = (r: ExpenseReport) =>
@@ -30,19 +27,6 @@ export default function BoardDashboard({ profile, reports }: Props) {
       r.profiles?.full_name?.toLowerCase().includes(filterMember.toLowerCase())
     return statusOk && memberOk
   })
-
-  const handleReview = async (reportId: string, status: 'approved' | 'rejected') => {
-    setLoading(true)
-    await fetch(`/api/reports/${reportId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, board_note: note }),
-    })
-    setReviewing(null)
-    setNote('')
-    setLoading(false)
-    router.refresh()
-  }
 
   const pendingCount  = reports.filter(r => r.status === 'pending').length
   const approvedTotal = reports
@@ -57,8 +41,9 @@ export default function BoardDashboard({ profile, reports }: Props) {
           <div>
             <h2 style={{ margin: 0 }}>🗂 Revisione Rimborsi</h2>
             <p style={{ margin: '0.25rem 0 0', color: '#6c757d', fontSize: '0.9rem' }}>
-              {profile.full_name} · {profile.section} ·{' '}
-              <Link href="/dashboard/board" style={{ color: '#0d6efd', textDecoration: 'none', fontWeight: 500 }}>
+              {profile.full_name} · {profile.section} · {' '}
+              <Link href="/dashboard/board"
+                style={{ color: '#0d6efd', textDecoration: 'none', fontWeight: 500 }}>
                 ← I Miei Rimborsi
               </Link>
             </p>
@@ -85,18 +70,15 @@ export default function BoardDashboard({ profile, reports }: Props) {
       {/* Filters */}
       <div className="card" style={{ marginBottom: '1rem' }}>
         <div className="card-body" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <select
-            className="form-select" style={{ maxWidth: 180 }}
+          <select className="form-select" style={{ maxWidth: 180 }}
             value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value as FilterStatus)}
-          >
+            onChange={e => setFilterStatus(e.target.value as FilterStatus)}>
             <option value="all">Tutti gli stati</option>
             <option value="pending">In Attesa</option>
             <option value="approved">Approvati</option>
             <option value="rejected">Rifiutati</option>
           </select>
-          <input
-            type="text" className="form-control" style={{ maxWidth: 240 }}
+          <input type="text" className="form-control" style={{ maxWidth: 240 }}
             placeholder="Cerca membro..."
             value={filterMember}
             onChange={e => setFilterMember(e.target.value)}
@@ -120,83 +102,26 @@ export default function BoardDashboard({ profile, reports }: Props) {
                   <th>Totale</th>
                   <th>Stato</th>
                   <th>Data</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(r => (
-                  <>
-                    <tr
-                      key={r.id}
-                      style={{ cursor: r.status === 'pending' ? 'pointer' : 'default' }}
-                      onClick={() => r.status === 'pending' && setReviewing(reviewing === r.id ? null : r.id)}
-                      onMouseEnter={e => r.status === 'pending' && (e.currentTarget.style.background = '#f0f4ff')}
-                      onMouseLeave={e => (e.currentTarget.style.background = '')}
-                    >
-                      <td><code style={{ fontSize: '0.8rem', background: '#e9ecef', padding: '2px 6px', borderRadius: 4 }}>{r.report_number}</code></td>
-                      <td>
-                        <strong>{r.profiles?.full_name ?? '—'}</strong>
-                        <br /><small style={{ color: '#6c757d' }}>{r.profiles?.section ?? ''}</small>
-                      </td>
-                      <td>{r.event_name}</td>
-                      <td style={{ textAlign: 'center' }}>{(r.items ?? []).length}</td>
-                      <td><strong>€{totalAmount(r).toFixed(2)}</strong></td>
-                      <td><StatusBadge status={r.status} /></td>
-                      <td>{new Date(r.created_at).toLocaleDateString('it-IT')}</td>
-                      <td>
-                        {r.status === 'pending' && (
-                          <span style={{ fontSize: '0.8rem', color: '#0d6efd' }}>▼ Revisiona</span>
-                        )}
-                      </td>
-                    </tr>
-
-                    {reviewing === r.id && r.status === 'pending' && (
-                      <tr key={`${r.id}-review`}>
-                        <td colSpan={8} style={{ background: '#fff8e1', padding: '1rem' }}>
-                          <div style={{ marginBottom: '0.75rem' }}>
-                            <strong style={{ fontSize: '0.85rem' }}>Voci di spesa:</strong>
-                            <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
-                              <thead>
-                                <tr style={{ background: '#f0f0f0' }}>
-                                  <th style={{ padding: '4px 8px', textAlign: 'left' }}>Titolo</th>
-                                  <th style={{ padding: '4px 8px', textAlign: 'left' }}>Categoria</th>
-                                  <th style={{ padding: '4px 8px', textAlign: 'right' }}>Importo</th>
-                                  <th style={{ padding: '4px 8px', textAlign: 'center' }}>Ricevuta</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(r.items ?? []).map(item => (
-                                  <tr key={item.id} style={{ borderTop: '1px solid #e9ecef' }}>
-                                    <td style={{ padding: '4px 8px' }}>{item.title}</td>
-                                    <td style={{ padding: '4px 8px' }}>{item.category}</td>
-                                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>€{Number(item.amount).toFixed(2)}</td>
-                                    <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                                      {item.receipt_url
-                                        ? <a href={item.receipt_url} target="_blank" rel="noopener noreferrer">📎</a>
-                                        : <span style={{ color: '#aaa' }}>—</span>}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          <textarea
-                            className="form-control"
-                            rows={2}
-                            placeholder="Nota al membro (opzionale)..."
-                            value={note}
-                            onChange={e => setNote(e.target.value)}
-                            style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}
-                          />
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn btn-esn-cyan" disabled={loading} onClick={() => handleReview(r.id, 'approved')}>✅ Approva</button>
-                            <button className="btn" style={{ background: '#dc3545', color: '#fff', border: 'none' }} disabled={loading} onClick={() => handleReview(r.id, 'rejected')}>❌ Rifiuta</button>
-                            <button className="btn" style={{ background: 'transparent', border: '1px solid #aaa', color: '#6c757d' }} onClick={() => { setReviewing(null); setNote('') }}>Annulla</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </>
+                  <tr key={r.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => router.push(`/dashboard/review/${r.id}`)}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                    <td><code style={{ fontSize: '0.8rem', background: '#e9ecef', padding: '2px 6px', borderRadius: 4 }}>{r.report_number}</code></td>
+                    <td>
+                      <strong>{r.profiles?.full_name ?? '—'}</strong>
+                      <br /><small style={{ color: '#6c757d' }}>{r.profiles?.section ?? ''}</small>
+                    </td>
+                    <td>{r.event_name}</td>
+                    <td style={{ textAlign: 'center' }}>{(r.items ?? []).length}</td>
+                    <td><strong>€{totalAmount(r).toFixed(2)}</strong></td>
+                    <td><StatusBadge status={r.status} /></td>
+                    <td>{new Date(r.created_at).toLocaleDateString('it-IT')}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>

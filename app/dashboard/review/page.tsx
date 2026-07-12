@@ -11,10 +11,7 @@ export default async function ReviewPage() {
   if (!user) redirect('/auth/login')
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+    .from('profiles').select('*').eq('id', user.id).single()
 
   if (!profile || profile.role !== 'board') redirect('/dashboard/member')
 
@@ -26,14 +23,10 @@ export default async function ReviewPage() {
   if (repError) console.error('[review] fetch reports error:', repError.message)
 
   const rows = (reports ?? []) as ExpenseReport[]
-
   const userIds = Array.from(new Set(rows.map(r => r.user_id).filter(Boolean)))
 
   const { data: memberProfiles } = userIds.length > 0
-    ? await supabase
-        .from('profiles')
-        .select('id, full_name, section')
-        .in('id', userIds)
+    ? await supabase.from('profiles').select('id, full_name, section').in('id', userIds)
     : { data: [] as { id: string; full_name: string; section: string }[] }
 
   const profileMap = Object.fromEntries(
@@ -42,7 +35,7 @@ export default async function ReviewPage() {
 
   const enrichedReports: EnrichedReport[] = rows.map(r => ({
     ...r,
-    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '\u2014' },
+    profiles: profileMap[r.user_id] ?? { full_name: 'Utente sconosciuto', section: '—' },
   }))
 
   return <BoardDashboard profile={profile} reports={enrichedReports} />

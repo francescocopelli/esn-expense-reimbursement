@@ -8,10 +8,11 @@ interface ItemRow {
   title: string
   category: string
   amount: string
+  note: string
   file: File | null
 }
 
-const emptyItem = (): ItemRow => ({ title: '', category: '', amount: '', file: null })
+const emptyItem = (): ItemRow => ({ title: '', category: '', amount: '', note: '', file: null })
 
 export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
   const [eventName, setEventName] = useState('')
@@ -24,8 +25,7 @@ export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
     setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
   }
 
-  const addItem = () => setItems(prev => [...prev, emptyItem()])
-
+  const addItem    = () => setItems(prev => [...prev, emptyItem()])
   const removeItem = (index: number) => {
     if (items.length === 1) return
     setItems(prev => prev.filter((_, i) => i !== index))
@@ -41,19 +41,20 @@ export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
     setLoading(true)
     setError(null)
 
-    const formData = new FormData()
-    formData.append('event_name', eventName)
-    formData.append('item_count', String(items.length))
+    const fd = new FormData()
+    fd.append('event_name', eventName)
+    fd.append('item_count', String(items.length))
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]
-      formData.append(`items[${i}][title]`,    item.title)
-      formData.append(`items[${i}][category]`, item.category)
-      formData.append(`items[${i}][amount]`,   item.amount)
-      if (item.file) formData.append(`items[${i}][receipt]`, item.file)
+      fd.append(`items[${i}][title]`,    item.title)
+      fd.append(`items[${i}][category]`, item.category)
+      fd.append(`items[${i}][amount]`,   item.amount)
+      fd.append(`items[${i}][note]`,     item.note)
+      if (item.file) fd.append(`items[${i}][receipt]`, item.file)
     }
 
-    const res = await fetch('/api/reports', { method: 'POST', body: formData })
+    const res  = await fetch('/api/reports', { method: 'POST', body: fd })
     const data = await res.json()
 
     if (!res.ok && res.status !== 207) {
@@ -75,46 +76,36 @@ export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* Nome Evento */}
       <div className="form-group">
         <label className="form-label" htmlFor="event_name">Nome Evento *</label>
         <input
-          id="event_name" type="text" required
-          className="form-control"
+          id="event_name" type="text" required className="form-control"
           placeholder="es. Erasmus Welcome Party"
           value={eventName}
           onChange={e => setEventName(e.target.value)}
         />
       </div>
 
-      {/* Voci di Spesa */}
       <div style={{ marginBottom: '1rem' }}>
         <label className="form-label">Voci di Spesa *</label>
 
         {items.map((item, i) => (
           <div key={i} style={{
-            border: '1px solid #dee2e6',
-            borderRadius: 8,
-            padding: '1rem',
-            marginBottom: '0.75rem',
-            background: '#f8f9fa',
+            border: '1px solid #dee2e6', borderRadius: 8,
+            padding: '1rem', marginBottom: '0.75rem', background: '#f8f9fa',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <strong style={{ fontSize: '0.9rem', color: '#495057' }}>Voce {i + 1}</strong>
               {items.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeItem(i)}
+                <button type="button" onClick={() => removeItem(i)}
                   style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '1.1rem' }}
-                  title="Rimuovi voce"
-                >✕</button>
+                  title="Rimuovi voce">✕</button>
               )}
             </div>
 
             <div className="form-group">
               <label className="form-label">Titolo *</label>
-              <input
-                type="text" required className="form-control"
+              <input type="text" required className="form-control"
                 placeholder="es. Biglietti treno"
                 value={item.title}
                 onChange={e => updateItem(i, 'title', e.target.value)}
@@ -124,8 +115,7 @@ export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
                 <label className="form-label">Categoria *</label>
-                <select
-                  required className="form-select"
+                <select required className="form-select"
                   value={item.category}
                   onChange={e => updateItem(i, 'category', e.target.value)}
                 >
@@ -133,11 +123,9 @@ export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-
               <div className="form-group">
                 <label className="form-label">Importo (€) *</label>
-                <input
-                  type="number" step="0.01" min="0.01" required className="form-control"
+                <input type="number" step="0.01" min="0.01" required className="form-control"
                   placeholder="0.00"
                   value={item.amount}
                   onChange={e => updateItem(i, 'amount', e.target.value)}
@@ -146,9 +134,17 @@ export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
             </div>
 
             <div className="form-group">
+              <label className="form-label">Nota <span style={{ color: '#6c757d', fontWeight: 400 }}>(opzionale)</span></label>
+              <textarea className="form-control" rows={2}
+                placeholder="es. Viaggio A/R Bologna–Milano, scontrino n°1234..."
+                value={item.note}
+                onChange={e => updateItem(i, 'note', e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
               <label className="form-label">Ricevuta / Scontrino</label>
-              <input
-                type="file" accept="image/*,.pdf" className="form-control"
+              <input type="file" accept="image/*,.pdf" className="form-control"
                 onChange={e => updateItem(i, 'file', e.target.files?.[0] ?? null)}
               />
               <p className="form-text">Foto o PDF, max 10 MB</p>
@@ -156,31 +152,19 @@ export default function ExpenseForm({ onSuccess }: { onSuccess?: () => void }) {
           </div>
         ))}
 
-        <button
-          type="button"
-          onClick={addItem}
-          className="btn"
-          style={{ border: '1px dashed #6c757d', background: 'transparent', color: '#6c757d', width: '100%' }}
-        >
+        <button type="button" onClick={addItem} className="btn"
+          style={{ border: '1px dashed #6c757d', background: 'transparent', color: '#6c757d', width: '100%' }}>
           + Aggiungi voce
         </button>
       </div>
 
-      {/* Totale */}
       <div style={{
-        background: '#e8f4fd',
-        borderRadius: 8,
-        padding: '0.75rem 1rem',
-        marginBottom: '1rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        fontWeight: 600,
+        background: '#e8f4fd', borderRadius: 8,
+        padding: '0.75rem 1rem', marginBottom: '1rem',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600,
       }}>
         <span>Totale rimborso</span>
-        <span style={{ fontSize: '1.1rem', color: '#0d6efd' }}>
-          €{totalAmount.toFixed(2)}
-        </span>
+        <span style={{ fontSize: '1.1rem', color: '#0d6efd' }}>€{totalAmount.toFixed(2)}</span>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
