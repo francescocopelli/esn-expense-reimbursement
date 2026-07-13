@@ -9,7 +9,7 @@ function resolveSupabaseKey(): string {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!key) {
-    console.error('[middleware] ❌ Missing env var: set either NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    console.error('[middleware] ❌ Missing env var')
     return ''
   }
   return key
@@ -37,12 +37,32 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Always allow auth routes through — never block /auth/* (login, register, callback)
+  // Always pass through auth routes immediately
   if (pathname.startsWith('/auth')) {
     return supabaseResponse
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Get user — handle stale/invalid refresh token gracefully
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  // If refresh token is invalid/expired, clear cookies and redirect to login
+  // This avoids an infinite redirect loop caused by stale browser cookies
+  if (authError && (
+    authError.message?.includes('Refresh Token Not Found') ||
+    authError.message?.includes('refresh_token_not_found') ||
+    (authError as any).code === 'refresh_token_not_found'
+  )) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    const redirectResponse = NextResponse.redirect(url)
+    // Clear all Supabase auth cookies so the browser starts fresh
+    request.cookies.getAll().forEach(cookie => {
+      if (cookie.name.startsWith('sb-')) {
+        redirectResponse.cookies.delete(cookie.name)
+      }
+    })
+    return redirectResponse
+  }
 
   // Not logged in → redirect to login
   if (!user) {
@@ -51,7 +71,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Role-based checks only for dashboard routes that need it
+  // Role-based checks only for routes that need it
   if (
     pathname.startsWith('/dashboard/admin') ||
     pathname.startsWith('/dashboard/review')
@@ -60,16 +80,12 @@ export async function middleware(request: NextRequest) {
       .from('profiles').select('role').eq('id', user.id).single()
     const role = profile?.role ?? 'member'
 
-    // /dashboard/admin/* → only admin
     if (pathname.startsWith('/dashboard/admin') && role !== 'admin') {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard/my_reimbursement'
       return NextResponse.redirect(url)
     }
 
-    // /dashboard/review* → board or admin only
-    // Note: supervisor scope is validated at page level, not middleware
-    // (project_supervisors has no RLS policy — cannot query here safely)
     if (
       (pathname.startsWith('/dashboard/review_reimbursement') ||
        pathname.startsWith('/dashboard/review')) &&
