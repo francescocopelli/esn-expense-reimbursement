@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 
@@ -10,6 +11,13 @@ function resolveSupabaseKey(): string {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
     ''
   )
+}
+
+/** Lightweight admin client for role lookup — bypasses RLS. */
+function resolveAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createSupabaseAdmin(url, key, { auth: { persistSession: false } })
 }
 
 export async function middleware(request: NextRequest) {
@@ -39,8 +47,6 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Pass auth pages and ALL API routes through without session check.
-  // API routes handle their own auth; checking here causes getUser() to run
-  // before cookies are available, producing spurious 401/network errors.
   if (pathname.startsWith('/auth') || pathname.startsWith('/api/')) {
     return supabaseResponse
   }
@@ -77,9 +83,14 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/dashboard/admin') ||
     pathname.startsWith('/dashboard/review')
   ) {
-    const { data: profile } = await supabase
+    // Use adminClient (service role) to bypass RLS — the anon client returns null
+    // for profiles rows when the user cookie context isn't fully established yet.
+    const admin = resolveAdminClient()
+    const { data: profile } = await admin
       .from('profiles').select('role').eq('id', user.id).single()
     const role = profile?.role ?? 'member'
+
+    console.log(`[middleware] role check for ${pathname}: userId=${user.id} role=${role}`)
 
     if (pathname.startsWith('/dashboard/admin') && role !== 'admin') {
       const url = request.nextUrl.clone()
