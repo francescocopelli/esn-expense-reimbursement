@@ -15,15 +15,18 @@ function resolveSupabaseKey(): string {
 // Routes accessible without authentication
 const PUBLIC_PATHS = ['/', '/auth']
 
+// API routes that require the user to be authenticated
+// (each route still does its own role check, but at least a valid session is required)
+const PROTECTED_API_PREFIXES = ['/api/reports', '/api/requests', '/api/admin', '/api/projects']
+
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(p =>
     p === '/' ? pathname === '/' : pathname.startsWith(p)
   )
 }
 
-export async function middleware(request: NextRequest) {
+async function buildSupabaseClient(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     resolveSupabaseKey(),
@@ -40,14 +43,26 @@ export async function middleware(request: NextRequest) {
       },
     }
   )
+  return { supabase, get supabaseResponse() { return supabaseResponse } }
+}
 
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  // Public paths and API routes bypass session check entirely
-  if (isPublicPath(pathname) || pathname.startsWith('/api/')) {
+  // Public paths bypass auth entirely
+  if (isPublicPath(pathname)) {
+    const { supabaseResponse } = await buildSupabaseClient(request)
     return supabaseResponse
   }
 
+  // Unprotected API routes (sentry-tunnel, public/*) — skip auth
+  if (pathname.startsWith('/api/') && !PROTECTED_API_PREFIXES.some(p => pathname.startsWith(p))) {
+    const { supabaseResponse } = await buildSupabaseClient(request)
+    return supabaseResponse
+  }
+
+  // All other routes (dashboard + protected API) — require a valid session
+  const { supabase, supabaseResponse } = await buildSupabaseClient(request)
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   console.log(
@@ -72,6 +87,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user) {
+    // API routes: return 401 instead of redirecting
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+    }
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     const res = NextResponse.redirect(url)
@@ -88,6 +107,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

@@ -32,7 +32,7 @@ export default function BoardSubmitPage({ profile, reports }: Props) {
             <h2 style={{ margin: 0 }}>📋 I Miei Rimborsi</h2>
             <p style={{ margin: '0.25rem 0 0', color: '#6c757d', fontSize: '0.9rem' }}>
               {profile.full_name} · {profile.section} ·{' '}
-              <Link href="/dashboard/review" style={{ color: '#0d6efd', textDecoration: 'none', fontWeight: 500 }}>
+              <Link href="/dashboard/review_reimbursement" style={{ color: '#0d6efd', textDecoration: 'none', fontWeight: 500 }}>
                 Vai alla Revisione →
               </Link>
             </p>

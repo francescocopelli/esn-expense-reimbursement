@@ -31,7 +31,7 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
       const hasGlobal = globalNote.trim().length > 0
       const hasItem   = Object.values(itemNotes).some(n => n.trim().length > 0)
       if (!hasGlobal && !hasItem) {
-        setSubmitErr('Per richiedere un’integrazione inserisci almeno una nota (globale o su una voce).')
+        setSubmitErr('Per richiedere un'integrazione inserisci almeno una nota (globale o su una voce).')
         return
       }
     }
@@ -54,7 +54,7 @@ export default function ReviewDetailClient({ report, submitter }: Props) {
     })
 
     setLoading(false)
-    router.push('/dashboard/review')
+    router.push('/dashboard/review_reimbursement')
   }
 
   return (

@@ -32,7 +32,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
     <div className="container" style={{ maxWidth: 800, margin: '0 auto' }}>
       {/* Breadcrumb */}
       <div style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6c757d' }}>
-        <Link href="/dashboard/review" style={{ color: '#0d6efd', textDecoration: 'none' }}>
+        <Link href="/dashboard/review_reimbursement" style={{ color: '#0d6efd', textDecoration: 'none' }}>
           ← Torna alla lista
         </Link>
       </div>
