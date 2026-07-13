@@ -1,5 +1,4 @@
 import { createServerClient } from '@supabase/ssr'
-import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 
@@ -13,13 +12,6 @@ function resolveSupabaseKey(): string {
   )
 }
 
-/** Lightweight admin client for role lookup — bypasses RLS. */
-function resolveAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createSupabaseAdmin(url, key, { auth: { persistSession: false } })
-}
-
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -28,13 +20,9 @@ export async function middleware(request: NextRequest) {
     resolveSupabaseKey(),
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet: CookieToSet[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -46,19 +34,27 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Pass auth pages and ALL API routes through without session check.
-  if (pathname.startsWith('/auth') || pathname.startsWith('/api/')) {
+  // Auth pages, API routes and the logout entrypoint bypass session check
+  if (
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/api/')
+  ) {
     return supabaseResponse
   }
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  console.log(`[middleware] ${pathname} user=${user?.id ?? 'null'} err=${authError?.message ?? 'none'}`)
+  console.log(
+    `[middleware] ${request.method} ${pathname}`,
+    `user=${user?.id ?? 'null'}`,
+    `err=${authError?.message ?? 'none'}`
+  )
 
+  // Stale refresh token — clear sb- cookies and redirect to login
   if (
     authError &&
     (authError.message?.includes('Refresh Token Not Found') ||
-     (authError as any).code === 'refresh_token_not_found')
+      (authError as any).code === 'refresh_token_not_found')
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
@@ -79,36 +75,8 @@ export async function middleware(request: NextRequest) {
     return res
   }
 
-  if (
-    pathname.startsWith('/dashboard/admin') ||
-    pathname.startsWith('/dashboard/review')
-  ) {
-    // Use adminClient (service role) to bypass RLS — the anon client returns null
-    // for profiles rows when the user cookie context isn't fully established yet.
-    const admin = resolveAdminClient()
-    const { data: profile } = await admin
-      .from('profiles').select('role').eq('id', user.id).single()
-    const role = profile?.role ?? 'member'
-
-    console.log(`[middleware] role check for ${pathname}: userId=${user.id} role=${role}`)
-
-    if (pathname.startsWith('/dashboard/admin') && role !== 'admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard/my_reimbursement'
-      return NextResponse.redirect(url)
-    }
-
-    if (
-      (pathname.startsWith('/dashboard/review_reimbursement') ||
-       pathname.startsWith('/dashboard/review')) &&
-      role !== 'board' && role !== 'admin'
-    ) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard/my_reimbursement'
-      return NextResponse.redirect(url)
-    }
-  }
-
+  // Role gating is handled server-side by each layout/page (using adminClient).
+  // The middleware only guarantees the user is authenticated.
   return supabaseResponse
 }
 

@@ -7,9 +7,9 @@ import type { Profile } from '@/lib/types'
 export default function DashboardNavbarWrapper({ profile }: { profile: Profile }) {
   const router = useRouter()
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/auth/login')
+  const handleLogout = () => {
+    // Navigate to the server-side logout entrypoint which calls signOut() then redirects
+    router.push('/auth/logout')
   }
 
   return (
