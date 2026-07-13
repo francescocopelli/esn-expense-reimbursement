@@ -4,20 +4,20 @@ const { withSentryConfig } = require('@sentry/nextjs')
 const nextConfig = {}
 
 module.exports = withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+  org: 'esn-expense-reimbursement',
+  project: 'reimbursement-system',
   authToken: process.env.SENTRY_AUTH_TOKEN,
 
   silent: true,
   telemetry: false,
   tunnelRoute: '/api/sentry-tunnel',
   automaticVercelMonitors: false,
+
+  // Never serve source maps to the browser (security + GDPR)
   hideSourceMaps: true,
 
-  // SOURCE MAP UPLOAD DISABLED
-  // Re-enable once SENTRY_ORG and SENTRY_PROJECT are verified on sentry.io
-  // Set to false to re-enable
+  // Upload to Sentry then delete from bundle — never public
   sourcemaps: {
-    disable: true,
+    deleteSourcemapsAfterUpload: true,
   },
 })
