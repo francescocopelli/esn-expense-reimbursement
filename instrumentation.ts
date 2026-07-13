@@ -2,11 +2,8 @@ import * as Sentry from '@sentry/nextjs'
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    // ---- Server (Node.js) ----
     Sentry.init({
       dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
-
-      // GDPR: no PII
       sendDefaultPii: false,
 
       beforeBreadcrumb(breadcrumb) {
@@ -51,13 +48,22 @@ export async function register() {
         'NEXT_NOT_FOUND',
       ],
     })
+
+    // Startup breadcrumb — confirms Sentry is active on this deployment
+    Sentry.addBreadcrumb({
+      category: 'app.lifecycle',
+      message: `Server started — env=${process.env.NODE_ENV} runtime=nodejs`,
+      level: 'info',
+    })
+    Sentry.captureMessage(
+      `[ESN] Server startup — ${process.env.NODE_ENV}`,
+      { level: 'info', tags: { runtime: 'nodejs', event: 'startup' } }
+    )
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {
-    // ---- Edge Runtime (middleware) ----
     Sentry.init({
       dsn: process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN,
-
       sendDefaultPii: false,
 
       beforeSend(event) {
@@ -79,7 +85,6 @@ export async function register() {
 
       tracesSampleRate: 0.1,
       environment: process.env.NODE_ENV,
-
       ignoreErrors: ['NEXT_REDIRECT', 'NEXT_NOT_FOUND'],
     })
   }

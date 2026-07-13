@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import * as Sentry from '@sentry/nextjs'
 
 const DEV_ACCOUNTS = [
   { label: 'Mario Rossi (Member)',   email: 'mario@esn-dev.local',  password: 'dev1234' },
@@ -24,23 +25,36 @@ export default function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // credentials: 'include' ensures cookies from the response are saved
         credentials: 'include',
         body: JSON.stringify({ email: em, password: pw }),
       })
 
-      const json = await res.json()
-
+      // Surface non-OK responses as user-visible errors (not "network error")
       if (!res.ok) {
-        setError(json.error ?? 'Errore durante il login')
+        let message = 'Errore durante il login'
+        try {
+          const json = await res.json()
+          message = json.error ?? message
+        } catch {
+          message = `Errore ${res.status}: ${res.statusText}`
+        }
+        // Report unexpected server errors (5xx) to Sentry
+        if (res.status >= 500) {
+          Sentry.captureMessage(`Login API ${res.status}`, { level: 'error', extra: { status: res.status } })
+        }
+        setError(message)
         setLoading(false)
         return
       }
 
+      const json = await res.json()
+
       // Full page navigation so the new cookies are sent on the next request
       window.location.href = json.redirectTo ?? '/'
-    } catch {
-      setError('Errore di rete. Riprova.')
+    } catch (err) {
+      // True network failure (offline, CORS, DNS) — report to Sentry
+      Sentry.captureException(err, { tags: { context: 'login_fetch' } })
+      setError('Errore di rete. Controlla la connessione e riprova.')
       setLoading(false)
     }
   }
@@ -61,7 +75,7 @@ export default function LoginForm() {
 
         {IS_DEV && (
           <div className="alert alert-warning" style={{ fontSize: '0.8125rem', marginBottom: '1.25rem' }}>
-            <strong>🛠 Modalità sviluppo</strong>
+            <strong>\uD83D\uDEE0 Modalità sviluppo</strong>
             <p style={{ margin: '0.5rem 0' }}>Accedi con un account demo:</p>
             <div className="flex flex-col gap-2">
               {DEV_ACCOUNTS.map(acc => (
