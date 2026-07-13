@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export default async function AdminOverviewPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [{ count: totalUsers }, { count: totalReports }, { count: pending }, { count: sections }] =
     await Promise.all([
@@ -53,6 +53,12 @@ export default async function AdminOverviewPage() {
           <div className="card-body">
             <h3 style={{ margin: '0 0 0.5rem', color: '#6f42c1' }}>📄 Report Globale</h3>
             <p className="text-muted" style={{ margin: 0 }}>Visualizza tutti i rimborsi di tutte le sezioni ed esporta CSV.</p>
+          </div>
+        </a>
+        <a href="/dashboard/admin/projects" className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="card-body">
+            <h3 style={{ margin: '0 0 0.5rem', color: '#6f42c1' }}>📁 Gestione Progetti</h3>
+            <p className="text-muted" style={{ margin: 0 }}>Crea progetti, assegna supervisori e categorie rimborsabili.</p>
           </div>
         </a>
       </div>

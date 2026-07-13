@@ -46,6 +46,7 @@ export interface ExpenseReport {
   board_note: string | null
   integration_note: string | null
   reviewed_by: string | null
+  reviewed_at: string | null   // Added: timestamp when report was reviewed
   created_at: string
   updated_at: string
   items?: ExpenseItem[]

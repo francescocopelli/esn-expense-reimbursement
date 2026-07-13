@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Signed URL expiry: 7 days (receipts are sensitive documents)
+const RECEIPT_SIGNED_URL_EXPIRY = 60 * 60 * 24 * 7
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,8 +18,15 @@ export async function POST(request: NextRequest) {
   const itemCount = parseInt(formData.get('item_count')?.toString() ?? '0', 10)
   if (itemCount < 1) return NextResponse.json({ error: 'Inserisci almeno una voce di spesa' }, { status: 400 })
 
-  // Determine allowed categories:
-  // If project_id provided and project has allowed_categories, use those; else use global
+  // Validate project is still active if project_id provided
+  if (project_id) {
+    const { data: proj } = await supabase
+      .from('projects').select('id, is_active').eq('id', project_id).single()
+    if (!proj || !proj.is_active)
+      return NextResponse.json({ error: 'Progetto non trovato o non attivo' }, { status: 400 })
+  }
+
+  // Determine allowed categories
   let catMap = new Map<string, number | null>()
 
   if (project_id) {
@@ -27,7 +37,6 @@ export async function POST(request: NextRequest) {
     if (pac && pac.length > 0) {
       catMap = new Map(pac.map(c => [c.category_name, c.max_amount]))
     } else {
-      // no project-specific categories: fall back to global
       const { data: validCats } = await supabase.from('expense_categories').select('name, max_amount')
       catMap = new Map((validCats ?? []).map(c => [c.name, c.max_amount]))
     }
@@ -75,8 +84,14 @@ export async function POST(request: NextRequest) {
       const path = `${user.id}/${report.id}/${i}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('receipts').upload(path, file, { contentType: file.type })
       if (uploadErr) { itemErrors.push(`Voce ${i + 1}: upload fallito — ${uploadErr.message}`); continue }
-      const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(path)
-      receipt_url = urlData.publicUrl
+      // Use signed URL (7-day expiry) instead of public URL for sensitive receipts
+      const { data: signedData, error: signErr } = await supabase.storage
+        .from('receipts').createSignedUrl(path, RECEIPT_SIGNED_URL_EXPIRY)
+      if (signErr || !signedData) {
+        itemErrors.push(`Voce ${i + 1}: impossibile generare URL ricevuta`)
+        continue
+      }
+      receipt_url = signedData.signedUrl
     }
 
     const { error: itemErr } = await supabase

@@ -44,14 +44,37 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // /dashboard/admin/* → only admin
-  if (request.nextUrl.pathname.startsWith('/dashboard/admin') && user) {
+  if (user) {
     const { data: profile } = await supabase
       .from('profiles').select('role').eq('id', user.id).single()
-    if (!profile || profile.role !== 'admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard/board'
-      return NextResponse.redirect(url)
+    const role = profile?.role ?? 'member'
+
+    // /dashboard/admin/* → only admin
+    if (request.nextUrl.pathname.startsWith('/dashboard/admin')) {
+      if (role !== 'admin') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard/my_reimbursement'
+        return NextResponse.redirect(url)
+      }
+    }
+
+    // /dashboard/review* and /dashboard/review_reimbursement* → board or admin only
+    // Supervisors are handled at page level (they may access specific project reports)
+    if (
+      request.nextUrl.pathname.startsWith('/dashboard/review_reimbursement') ||
+      request.nextUrl.pathname.startsWith('/dashboard/review')
+    ) {
+      if (role !== 'board' && role !== 'admin') {
+        // Allow if supervisor (project_supervisors check done at page level)
+        // Middleware only blocks pure members
+        const { data: supervised } = await supabase
+          .from('project_supervisors').select('project_id').eq('user_id', user.id).limit(1)
+        if (!supervised || supervised.length === 0) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/dashboard/my_reimbursement'
+          return NextResponse.redirect(url)
+        }
+      }
     }
   }
 

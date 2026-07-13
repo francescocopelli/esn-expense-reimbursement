@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import ReviewDetailClient from '@/components/ReviewDetailClient'
@@ -12,11 +13,22 @@ export default async function ReviewReimbursementDetailPage({ params }: { params
   const { data: profile } = await supabase
     .from('profiles').select('*').eq('id', user.id).single()
 
-  if (!profile || (profile.role !== 'board' && profile.role !== 'admin')) {
-    redirect('/dashboard/my_reimbursement')
+  const isBoardOrAdmin = profile?.role === 'board' || profile?.role === 'admin'
+
+  if (!profile || !isBoardOrAdmin) {
+    // Check project supervisor access
+    const adminClient = createAdminClient()
+    const { data: supervised } = await adminClient
+      .from('project_supervisors').select('project_id').eq('user_id', user.id)
+    if (!supervised || supervised.length === 0) redirect('/dashboard/my_reimbursement')
   }
 
-  const { data: report } = await supabase
+  if (!profile) redirect('/auth/login')
+
+  // Use admin client so board/admin/supervisor can fetch any report
+  const adminClient = createAdminClient()
+
+  const { data: report } = await adminClient
     .from('expense_reports')
     .select('*, items:expense_items(*)')
     .eq('id', id)
@@ -24,7 +36,15 @@ export default async function ReviewReimbursementDetailPage({ params }: { params
 
   if (!report) notFound()
 
-  const { data: submitter } = await supabase
+  // Verify supervisor scope: if not board/admin, report must belong to one of their projects
+  if (!isBoardOrAdmin) {
+    const { data: supervised } = await adminClient
+      .from('project_supervisors').select('project_id').eq('user_id', user.id)
+    const projectIds = (supervised ?? []).map((s: any) => s.project_id)
+    if (!report.project_id || !projectIds.includes(report.project_id)) notFound()
+  }
+
+  const { data: submitter } = await adminClient
     .from('profiles').select('full_name, section').eq('id', report.user_id).single()
 
   return (

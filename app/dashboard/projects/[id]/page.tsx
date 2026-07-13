@@ -15,12 +15,21 @@ export default async function ProjectReimbursementPage({ params }: { params: Pro
     .from('projects')
     .select('*, supervisors:project_supervisors(user_id, profiles(id, full_name)), allowed_categories:project_allowed_categories(category_name, max_amount)')
     .eq('id', id)
-    .eq('is_active', true)
+    .eq('is_active', true)  // Guard: reject inactive projects even with direct URL
     .single()
 
-  if (!project) notFound()
+  if (!project) notFound()  // Returns 404 for inactive or non-existent projects
 
   const p = project as Project
+
+  // Additional guard: check end_date hasn't passed
+  if (p.end_date) {
+    const today = new Date().toISOString().split('T')[0]
+    if (p.end_date < today) {
+      // Project expired — treat as not found
+      notFound()
+    }
+  }
 
   let categories: ExpenseCategory[] = []
   if (p.allowed_categories && p.allowed_categories.length > 0) {

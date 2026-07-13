@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface ItemNote {
@@ -32,16 +33,27 @@ export async function PATCH(
   if (!VALID_STATUSES.includes(body.status))
     return NextResponse.json({ error: 'Stato non valido' }, { status: 400 })
 
+  // Use admin client to fetch the report (bypass RLS for board role)
+  const adminClient = createAdminClient()
+  const { data: existing } = await adminClient
+    .from('expense_reports').select('id, project_id').eq('id', id).single()
+  if (!existing) return NextResponse.json({ error: 'Rimborso non trovato' }, { status: 404 })
+
+  // Board: verify they are not trying to approve a report outside their scope.
+  // Admin can approve any report. Board can approve any (global scope by design).
+  // Supervisor: not handled here (PATCH is board/admin only — checked above).
+
   const integration_note =
     body.status === 'needs_info' ? (body.board_note ?? null) : null
 
-  const { data, error } = await supabase
+  const { data, error } = await adminClient
     .from('expense_reports')
     .update({
       status:           body.status,
       board_note:       body.board_note ?? null,
       integration_note,
       reviewed_by:      user.id,
+      reviewed_at:      new Date().toISOString(),
       updated_at:       new Date().toISOString(),
     })
     .eq('id', id)
@@ -53,7 +65,7 @@ export async function PATCH(
   if (body.item_notes?.length) {
     for (const { id: itemId, board_note } of body.item_notes) {
       if (board_note === null || board_note === undefined) continue
-      await supabase
+      await adminClient
         .from('expense_items')
         .update({ board_note })
         .eq('id', itemId)
