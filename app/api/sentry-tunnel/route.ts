@@ -15,33 +15,61 @@ const SENTRY_HOST = 'sentry.io'
 
 // Server-only env var (no NEXT_PUBLIC_ prefix — never exposed to the browser)
 // Value: numeric project ID from the DSN, e.g. "4511727056650320"
-// Found at: sentry.io/settings/projects/reimbursement-system/ → DSN path
+// Found at: sentry.io/settings/projects/ → DSN path segment after the last /
+// Leave empty to skip project-ID enforcement (host validation still applies).
 const SENTRY_PROJECT_ID = process.env.SENTRY_PROJECT_ID ?? ''
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
-    const envelope = body.split('\n')
-    const header = JSON.parse(envelope[0])
+    if (!body) {
+      return NextResponse.json({ error: 'Empty body' }, { status: 400 })
+    }
+
+    const firstLine = body.split('\n')[0]
+    let header: Record<string, unknown>
+    try {
+      header = JSON.parse(firstLine)
+    } catch {
+      return NextResponse.json({ error: 'Invalid envelope header' }, { status: 400 })
+    }
+
+    // header.dsn may be absent in some SDK versions — fall back gracefully
+    if (!header.dsn) {
+      // No DSN in header: forward blindly to sentry.io (SDK handles routing)
+      const sentryUrl = `https://${SENTRY_HOST}/api/envelope/`
+      const response = await fetch(sentryUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-sentry-envelope' },
+        body,
+      })
+      return new NextResponse(response.body, { status: response.status })
+    }
 
     const dsn = new URL(header.dsn as string)
-    if (dsn.hostname !== SENTRY_HOST && !dsn.hostname.endsWith('.ingest.sentry.io')) {
+    const validHost = dsn.hostname === SENTRY_HOST || dsn.hostname.endsWith('.ingest.sentry.io')
+    if (!validHost) {
+      console.error(`[sentry-tunnel] Invalid DSN host: ${dsn.hostname}`)
       return NextResponse.json({ error: 'Invalid DSN host' }, { status: 400 })
     }
 
-    const projectId = dsn.pathname.replace('/', '')
+    const projectId = dsn.pathname.replace(/^\//, '')
 
-    // If SENTRY_PROJECT_ID is set, enforce it; otherwise allow any project
-    // (safe because host is already validated to *.sentry.io)
+    // Only enforce project ID if the env var is configured
     if (SENTRY_PROJECT_ID && projectId !== SENTRY_PROJECT_ID) {
-      return NextResponse.json({ error: 'Invalid project' }, { status: 400 })
+      // Log the mismatch — this is the most common misconfiguration
+      console.error(
+        `[sentry-tunnel] Project ID mismatch: envelope has "${projectId}", SENTRY_PROJECT_ID env is "${SENTRY_PROJECT_ID}". ` +
+        'Update the SENTRY_PROJECT_ID env var on Vercel to match your DSN.'
+      )
+      return NextResponse.json(
+        { error: 'Project ID mismatch', envelope: projectId, configured: SENTRY_PROJECT_ID },
+        { status: 400 }
+      )
     }
 
-    // Support both legacy sentry.io and regional ingest endpoints
-    const sentryIngestHost = dsn.hostname.endsWith('.ingest.sentry.io')
-      ? dsn.hostname
-      : SENTRY_HOST
-    const sentryUrl = `https://${sentryIngestHost}/api/${projectId}/envelope/`
+    const ingestHost = dsn.hostname.endsWith('.ingest.sentry.io') ? dsn.hostname : SENTRY_HOST
+    const sentryUrl = `https://${ingestHost}/api/${projectId}/envelope/`
 
     const response = await fetch(sentryUrl, {
       method: 'POST',
@@ -54,6 +82,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     })
   } catch (e) {
+    console.error('[sentry-tunnel] Unexpected error:', e)
     return NextResponse.json({ error: 'Tunnel error' }, { status: 500 })
   }
 }
