@@ -7,12 +7,13 @@ import type { ExpenseCategory, Project } from '@/lib/types'
 export default async function MyReimbursementPage() {
   const supabase = await createClient()
 
-  // getSession() reads from cookie — no extra network call, no race condition
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) redirect('/auth/login')
+  // getUser() verifies the JWT against Supabase Auth server — required after
+  // server-side login where cookies may not yet be in the browser's next request.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', session.user.id).single()
+    .from('profiles').select('*').eq('id', user.id).single()
   if (!profile) redirect('/auth/login')
 
   const admin = createAdminClient()
@@ -25,7 +26,7 @@ export default async function MyReimbursementPage() {
     supabase
       .from('expense_reports')
       .select('*, items:expense_items(*)')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
     admin
       .from('expense_categories')
