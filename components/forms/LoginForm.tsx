@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 const DEV_ACCOUNTS = [
@@ -17,60 +15,52 @@ export default function LoginForm() {
   const [password, setPassword] = useState('')
   const [error,    setError]    = useState<string | null>(null)
   const [loading,  setLoading]  = useState(false)
-  const router   = useRouter()
-  const supabase = createClient()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const doLogin = async (em: string, pw: string) => {
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // credentials: 'include' ensures cookies from the response are saved
+        credentials: 'include',
+        body: JSON.stringify({ email: em, password: pw }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        setError(json.error ?? 'Errore durante il login')
+        setLoading(false)
+        return
+      }
+
+      // Full page navigation so the new cookies are sent on the next request
+      window.location.href = json.redirectTo ?? '/'
+    } catch {
+      setError('Errore di rete. Riprova.')
       setLoading(false)
-    } else {
-      // Use window.location for a full navigation so the server-side
-      // root page can resolve the correct role-based redirect
-      window.location.href = '/'
     }
   }
 
-  const handleDevLogin = async (acc: typeof DEV_ACCOUNTS[0]) => {
-    setLoading(true)
-    setError(null)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: acc.email,
-      password: acc.password,
-    })
-    if (error) {
-      setError(`Dev login fallito: ${error.message}`)
-      setLoading(false)
-    } else {
-      window.location.href = '/'
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    doLogin(email, password)
   }
 
   return (
     <div className="login-page">
       <div className="login-card">
         <div className="login-card-header">
-          <Image
-            src="/logo.svg"
-            alt="ESN Logo"
-            width={150}
-            height={56}
-            priority
-            className="login-logo"
-          />
+          <Image src="/logo.svg" alt="ESN Logo" width={150} height={56} priority className="login-logo" />
           <h1 className="login-title">Accedi</h1>
           <p className="login-subtitle">Online Reimbursement System</p>
         </div>
 
         {IS_DEV && (
-          <div
-            className="alert alert-warning"
-            style={{ fontSize: '0.8125rem', marginBottom: '1.25rem' }}
-          >
+          <div className="alert alert-warning" style={{ fontSize: '0.8125rem', marginBottom: '1.25rem' }}>
             <strong>🛠 Modalità sviluppo</strong>
             <p style={{ margin: '0.5rem 0' }}>Accedi con un account demo:</p>
             <div className="flex flex-col gap-2">
@@ -78,7 +68,7 @@ export default function LoginForm() {
                 <button
                   key={acc.email}
                   type="button"
-                  onClick={() => handleDevLogin(acc)}
+                  onClick={() => doLogin(acc.email, acc.password)}
                   disabled={loading}
                   className="btn btn-outline-gray btn-sm w-full"
                 >
@@ -91,39 +81,26 @@ export default function LoginForm() {
           </div>
         )}
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label" htmlFor="email">Email</label>
             <input
-              id="email"
-              type="email"
-              value={email}
+              id="email" type="email" value={email}
               onChange={e => setEmail(e.target.value)}
-              required
-              className="form-control"
+              required className="form-control"
               placeholder={IS_DEV ? 'nome@esn-dev.local' : 'nome@esn.org'}
             />
           </div>
-
           <div className="form-group">
             <label className="form-label" htmlFor="password">Password</label>
             <input
-              id="password"
-              type="password"
-              value={password}
+              id="password" type="password" value={password}
               onChange={e => setPassword(e.target.value)}
-              required
-              className="form-control"
+              required className="form-control"
             />
           </div>
-
           {error && <div className="login-error">{error}</div>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-esn-cyan w-full btn-lg"
-          >
+          <button type="submit" disabled={loading} className="btn btn-esn-cyan w-full btn-lg">
             {loading ? 'Accesso in corso...' : 'Accedi'}
           </button>
         </form>
