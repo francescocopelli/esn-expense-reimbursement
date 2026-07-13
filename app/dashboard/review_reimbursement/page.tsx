@@ -23,8 +23,9 @@ export default async function ReviewReimbursementPage() {
     redirect('/auth/login')
   }
 
-  // Always use adminClient to bypass RLS
+  // Always use adminClient to bypass RLS for all queries on this page
   const admin = createAdminClient()
+
   const { data: profile, error: profileError } = await admin
     .from('profiles').select('*').eq('id', user!.id).single()
 
@@ -44,7 +45,7 @@ export default async function ReviewReimbursementPage() {
   if (!profile) {
     Sentry.captureMessage('[ESN] ReviewPage: profile not found', {
       level: 'error',
-      extra: { userId: user!.id, errorCode: profileError?.code, errorMessage: profileError?.message, errorHint: profileError?.hint },
+      extra: { userId: user!.id, errorCode: profileError?.code, errorMessage: profileError?.message },
       tags: { context: 'review_page', event: 'profile_missing' },
     })
     redirect('/auth/login')
@@ -59,8 +60,10 @@ export default async function ReviewReimbursementPage() {
     data: { userId: user!.id, role: profile!.role },
   })
 
+  // Determine which project_ids this user can see (for supervisors)
+  let allowedProjectIds: string[] | null = null // null = no filter (board/admin sees all)
+
   if (!isBoardOrAdmin) {
-    // Check if supervisor
     const { data: supervised, error: supErr } = await admin
       .from('project_supervisors').select('project_id').eq('user_id', user!.id)
 
@@ -79,26 +82,28 @@ export default async function ReviewReimbursementPage() {
       })
       redirect('/dashboard/my_reimbursement')
     }
+
+    allowedProjectIds = (supervised ?? []).map((s: any) => s.project_id)
   }
 
-  const fetchClient = isBoardOrAdmin ? admin : supabase
-
-  let reportsQuery = fetchClient
+  // --- Always use admin for expense_reports to bypass RLS ---
+  // NOTE: if this still returns "permission denied", the table has
+  // FORCE ROW LEVEL SECURITY enabled on Supabase. Fix:
+  //   ALTER TABLE expense_reports NO FORCE ROW LEVEL SECURITY;
+  // or add an explicit policy: CREATE POLICY "service_role_all" ON expense_reports
+  //   TO service_role USING (true) WITH CHECK (true);
+  let reportsQuery = admin
     .from('expense_reports')
     .select('*, items:expense_items(*)')
     .order('created_at', { ascending: false })
 
-  if (!isBoardOrAdmin) {
-    const { data: supervised } = await admin
-      .from('project_supervisors').select('project_id').eq('user_id', user!.id)
-    const projectIds = (supervised ?? []).map((s: any) => s.project_id)
-    reportsQuery = reportsQuery.in('project_id', projectIds)
-
+  if (allowedProjectIds !== null) {
+    reportsQuery = reportsQuery.in('project_id', allowedProjectIds)
     Sentry.addBreadcrumb({
       category: 'page',
-      message: `ReviewPage: supervisor filtering by ${projectIds.length} projects`,
+      message: `ReviewPage: filtering by ${allowedProjectIds.length} supervised projects`,
       level: 'info',
-      data: { projectIds },
+      data: { projectIds: allowedProjectIds },
     })
   }
 
@@ -108,14 +113,27 @@ export default async function ReviewReimbursementPage() {
     category: 'page',
     message: `ReviewPage: reports fetched`,
     level: 'info',
-    data: { count: reports?.length ?? 0, error: repError?.message ?? null },
+    data: {
+      count: reports?.length ?? 0,
+      error: repError?.message ?? null,
+      errorCode: repError?.code ?? null,
+      hint: (repError as any)?.hint ?? null,
+      details: (repError as any)?.details ?? null,
+    },
   })
 
   if (repError) {
     Sentry.captureMessage('[ESN] ReviewPage: reports fetch error', {
       level: 'error',
-      extra: { errorMessage: repError.message, errorCode: repError.code },
-      tags: { context: 'review_page', event: 'reports_fetch_error' },
+      extra: {
+        errorMessage: repError.message,
+        errorCode: repError.code,
+        hint: (repError as any)?.hint,
+        details: (repError as any)?.details,
+        // Diagnostic: if this says "permission denied" with adminClient, the table
+        // has FORCE ROW LEVEL SECURITY — run the SQL migration in supabase/migrations/
+      },
+      tags: { context: 'review_page', event: 'reports_fetch_error', usingAdminClient: 'true' },
     })
   }
 
@@ -143,11 +161,6 @@ export default async function ReviewReimbursementPage() {
   }))
 
   Sentry.setUser({ id: user!.id })
-  Sentry.addBreadcrumb({
-    category: 'page',
-    message: `ReviewPage: rendering with ${enrichedReports.length} reports`,
-    level: 'info',
-  })
 
   return <BoardDashboard profile={profile!} reports={enrichedReports} />
 }
