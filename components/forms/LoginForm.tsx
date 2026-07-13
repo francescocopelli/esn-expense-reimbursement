@@ -3,14 +3,12 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
 
 // Demo accounts — used only in development (NODE_ENV === 'development')
-// In production these buttons are hidden; real ESN accounts go through Supabase Auth.
 const DEV_ACCOUNTS = [
-  { label: 'Mario Rossi (Member)',    email: 'mario@esn-dev.local',   password: 'dev1234' },
-  { label: 'Giulia Bianchi (Board)',  email: 'giulia@esn-dev.local',  password: 'dev1234' },
+  { label: 'Mario Rossi (Member)',   email: 'mario@esn-dev.local',  password: 'dev1234' },
+  { label: 'Giulia Bianchi (Board)', email: 'giulia@esn-dev.local', password: 'dev1234' },
 ]
 
 const IS_DEV = process.env.NODE_ENV === 'development'
@@ -130,14 +128,8 @@ export default function LoginForm() {
           </button>
         </form>
 
-        <p className="login-footnote">
-          Non hai un account?{' '}
-          <Link
-            href="/auth/register"
-            style={{ color: 'var(--esn-dark-blue)', fontWeight: 600 }}
-          >
-            Registrati
-          </Link>
+        <p className="login-footnote" style={{ color: '#6c757d' }}>
+          Per ottenere un account contatta un amministratore ESN.
         </p>
       </div>
     </div>
