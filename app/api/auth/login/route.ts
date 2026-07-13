@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
+import * as Sentry from '@sentry/nextjs'
 
 type CookieToSet = { name: string; value: string; options?: Partial<ResponseCookie> }
 
@@ -39,10 +40,24 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
+    Sentry.addBreadcrumb({
+      category: 'auth',
+      message: `Login failed for ${email}`,
+      level: 'warning',
+      data: { errorMessage: error.message, errorCode: (error as any).code },
+    })
     return NextResponse.json({ error: error.message }, { status: 401 })
   }
 
-  // Determine redirect based on role
+  const userId = data.user?.id
+  Sentry.addBreadcrumb({
+    category: 'auth',
+    message: 'Login success',
+    level: 'info',
+    data: { userId },
+  })
+  Sentry.setUser({ id: userId })
+
   const role = data.user?.user_metadata?.role ?? 'member'
   let redirectTo = '/dashboard/my_reimbursement'
   if (role === 'admin') redirectTo = '/dashboard/admin'

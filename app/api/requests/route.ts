@@ -1,59 +1,62 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
+import { captureDbError } from '@/lib/sentry'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
 
-  const formData   = await request.formData()
-  const event_name = formData.get('event_name')?.toString().trim()
-  const category   = formData.get('category')?.toString()
-  const amount     = parseFloat(formData.get('amount')?.toString() ?? '0')
-  const description = formData.get('description')?.toString() || null
-  const receipt    = formData.get('receipt') as File | null
+  Sentry.setUser({ id: user.id })
 
-  if (!event_name || !category || isNaN(amount) || amount <= 0) {
-    return NextResponse.json(
-      { error: 'Campi obbligatori mancanti o non validi (event_name, category, amount > 0)' },
-      { status: 400 }
-    )
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch (err) {
+    Sentry.captureException(err, { tags: { route: 'POST /api/requests', step: 'json_parse' } })
+    return NextResponse.json({ error: 'Payload non valido' }, { status: 400 })
   }
 
-  let receipt_url: string | null = null
-
-  if (receipt && receipt.size > 0) {
-    if (receipt.size > 10 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'File troppo grande. Dimensione massima consentita: 10 MB.' },
-        { status: 400 }
-      )
-    }
-
-    const ext  = receipt.name.split('.').pop() ?? 'bin'
-    const path = `${user.id}/${Date.now()}.${ext}`
-
-    const { error: uploadError } = await supabase.storage
-      .from('receipts')
-      .upload(path, receipt, { contentType: receipt.type })
-
-    if (uploadError) {
-      return NextResponse.json(
-        { error: `Upload ricevuta fallito: ${uploadError.message}` },
-        { status: 500 }
-      )
-    }
-
-    const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(path)
-    receipt_url = urlData.publicUrl
-  }
+  const { report_id, notes } = body as { report_id?: string; notes?: string }
+  if (!report_id) return NextResponse.json({ error: 'report_id obbligatorio' }, { status: 400 })
 
   const { data, error } = await supabase
-    .from('expense_requests')
-    .insert({ user_id: user.id, event_name, category, amount, description, receipt_url })
-    .select()
-    .single()
+    .from('reimbursement_requests')
+    .insert({ report_id, notes, requested_by: user.id })
+    .select().single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error || !data) {
+    captureDbError('POST /api/requests insert', error, { userId: user.id, report_id })
+    return NextResponse.json({ error: error?.message ?? 'Errore creazione richiesta' }, { status: 500 })
+  }
+
+  Sentry.addBreadcrumb({
+    category: 'requests',
+    message: `Reimbursement request ${data.id} created`,
+    level: 'info',
+    data: { requestId: data.id, reportId: report_id },
+  })
+
   return NextResponse.json(data, { status: 201 })
+}
+
+export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+
+  Sentry.setUser({ id: user.id })
+
+  const { data, error } = await supabase
+    .from('reimbursement_requests')
+    .select('*, report:expense_reports(*)')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    captureDbError('GET /api/requests select', error, { userId: user.id })
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json(data)
 }
