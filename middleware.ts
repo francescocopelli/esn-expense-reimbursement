@@ -35,46 +35,49 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  const pathname = request.nextUrl.pathname
+
+  // Always allow auth routes through — never block /auth/* (login, register, callback)
+  if (pathname.startsWith('/auth')) {
+    return supabaseResponse
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
 
   // Not logged in → redirect to login
-  if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
+  if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 
-  if (user) {
+  // Role-based checks only for dashboard routes that need it
+  if (
+    pathname.startsWith('/dashboard/admin') ||
+    pathname.startsWith('/dashboard/review')
+  ) {
     const { data: profile } = await supabase
       .from('profiles').select('role').eq('id', user.id).single()
     const role = profile?.role ?? 'member'
 
     // /dashboard/admin/* → only admin
-    if (request.nextUrl.pathname.startsWith('/dashboard/admin')) {
-      if (role !== 'admin') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/dashboard/my_reimbursement'
-        return NextResponse.redirect(url)
-      }
+    if (pathname.startsWith('/dashboard/admin') && role !== 'admin') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard/my_reimbursement'
+      return NextResponse.redirect(url)
     }
 
-    // /dashboard/review* and /dashboard/review_reimbursement* → board or admin only
-    // Supervisors are handled at page level (they may access specific project reports)
+    // /dashboard/review* → board or admin only
+    // Note: supervisor scope is validated at page level, not middleware
+    // (project_supervisors has no RLS policy — cannot query here safely)
     if (
-      request.nextUrl.pathname.startsWith('/dashboard/review_reimbursement') ||
-      request.nextUrl.pathname.startsWith('/dashboard/review')
+      (pathname.startsWith('/dashboard/review_reimbursement') ||
+       pathname.startsWith('/dashboard/review')) &&
+      role !== 'board' && role !== 'admin'
     ) {
-      if (role !== 'board' && role !== 'admin') {
-        // Allow if supervisor (project_supervisors check done at page level)
-        // Middleware only blocks pure members
-        const { data: supervised } = await supabase
-          .from('project_supervisors').select('project_id').eq('user_id', user.id).limit(1)
-        if (!supervised || supervised.length === 0) {
-          const url = request.nextUrl.clone()
-          url.pathname = '/dashboard/my_reimbursement'
-          return NextResponse.redirect(url)
-        }
-      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard/my_reimbursement'
+      return NextResponse.redirect(url)
     }
   }
 
