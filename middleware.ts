@@ -12,6 +12,15 @@ function resolveSupabaseKey(): string {
   )
 }
 
+// Routes accessible without authentication
+const PUBLIC_PATHS = ['/', '/auth']
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some(p =>
+    p === '/' ? pathname === '/' : pathname.startsWith(p)
+  )
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -34,11 +43,8 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Auth pages, API routes and the logout entrypoint bypass session check
-  if (
-    pathname.startsWith('/auth') ||
-    pathname.startsWith('/api/')
-  ) {
+  // Public paths and API routes bypass session check entirely
+  if (isPublicPath(pathname) || pathname.startsWith('/api/')) {
     return supabaseResponse
   }
 
@@ -82,6 +88,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
