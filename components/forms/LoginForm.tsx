@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
-// Demo accounts — used only in development (NODE_ENV === 'development')
 const DEV_ACCOUNTS = [
   { label: 'Mario Rossi (Member)',   email: 'mario@esn-dev.local',  password: 'dev1234' },
   { label: 'Giulia Bianchi (Board)', email: 'giulia@esn-dev.local', password: 'dev1234' },
@@ -30,7 +29,9 @@ export default function LoginForm() {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push('/')
+      // Use window.location for a full navigation so the server-side
+      // root page can resolve the correct role-based redirect
+      window.location.href = '/'
     }
   }
 
@@ -45,7 +46,7 @@ export default function LoginForm() {
       setError(`Dev login fallito: ${error.message}`)
       setLoading(false)
     } else {
-      router.push('/')
+      window.location.href = '/'
     }
   }
 
@@ -65,7 +66,6 @@ export default function LoginForm() {
           <p className="login-subtitle">Online Reimbursement System</p>
         </div>
 
-        {/* DEV ONLY: quick account selector — hidden in production */}
         {IS_DEV && (
           <div
             className="alert alert-warning"

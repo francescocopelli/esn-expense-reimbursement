@@ -13,6 +13,7 @@ export default async function HomePage() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role === 'board') redirect('/dashboard/board')
-  redirect('/dashboard/member')
+  if (profile?.role === 'admin') redirect('/dashboard/admin')
+  if (profile?.role === 'board') redirect('/dashboard/review_reimbursement')
+  redirect('/dashboard/my_reimbursement')
 }
