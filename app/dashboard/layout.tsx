@@ -1,20 +1,38 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import DashboardNavbarWrapper from '@/components/DashboardNavbarWrapper'
 import EsnFooter from '@/components/EsnFooter'
+import * as Sentry from '@sentry/nextjs'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
 
-  // MUST use getUser() — verifies the session against the Supabase Auth server.
-  // getSession() reads only from cookies and can return stale/unverified data.
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (!user) {
+    console.error('[layout] getUser failed:', userError?.message)
+    redirect('/auth/login')
+  }
 
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single()
+  const admin = createAdminClient()
 
-  if (!profile) redirect('/auth/login')
+  // Use adminClient to bypass RLS on profiles table
+  const { data: profile, error: profileError } = await admin
+    .from('profiles').select('*').eq('id', user!.id).single()
+
+  if (!profile) {
+    Sentry.captureMessage('[ESN] Layout: profile not found', {
+      level: 'error',
+      extra: {
+        userId: user!.id,
+        errorCode: profileError?.code,
+        errorMessage: profileError?.message,
+      },
+      tags: { context: 'dashboard_layout', event: 'profile_missing' },
+    })
+    console.error('[layout] profile not found for user', user!.id, profileError)
+    redirect('/auth/login')
+  }
 
   return (
     <>
