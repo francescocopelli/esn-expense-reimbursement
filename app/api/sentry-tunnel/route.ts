@@ -13,10 +13,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const SENTRY_HOST = 'sentry.io'
 
-// Hardcoded from sentry.io/settings/projects/reimbursement-system/
-// Extract from DSN: https://<key>@oNNNNNN.ingest.sentry.io/<PROJECT_ID>
-// The numeric project ID appears in the DSN path.
-const SENTRY_PROJECT_ID = process.env.NEXT_PUBLIC_SENTRY_PROJECT_ID ?? ''
+// Server-only env var (no NEXT_PUBLIC_ prefix — never exposed to the browser)
+// Value: numeric project ID from the DSN, e.g. "4511727056650320"
+// Found at: sentry.io/settings/projects/reimbursement-system/ → DSN path
+const SENTRY_PROJECT_ID = process.env.SENTRY_PROJECT_ID ?? ''
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
 
     const projectId = dsn.pathname.replace('/', '')
 
-    // If NEXT_PUBLIC_SENTRY_PROJECT_ID is set, enforce it; otherwise allow any project
-    // (safe because host is already validated to sentry.io)
+    // If SENTRY_PROJECT_ID is set, enforce it; otherwise allow any project
+    // (safe because host is already validated to *.sentry.io)
     if (SENTRY_PROJECT_ID && projectId !== SENTRY_PROJECT_ID) {
       return NextResponse.json({ error: 'Invalid project' }, { status: 400 })
     }
