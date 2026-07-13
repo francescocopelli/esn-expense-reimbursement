@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -6,7 +7,8 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
 
-  const { data, error } = await supabase
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('projects')
     .select(`
       *,
@@ -39,7 +41,9 @@ export async function POST(request: NextRequest) {
   if (end_date && end_date < start_date)
     return NextResponse.json({ error: 'La data di fine deve essere uguale o successiva alla data di inizio' }, { status: 400 })
 
-  const { data: project, error: pErr } = await supabase
+  const admin = createAdminClient()
+
+  const { data: project, error: pErr } = await admin
     .from('projects')
     .insert({
       name: name.trim(),
@@ -55,13 +59,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: pErr?.message ?? 'Errore creazione' }, { status: 500 })
 
   if (supervisor_ids.length > 0) {
-    await supabase.from('project_supervisors').insert(
+    await admin.from('project_supervisors').insert(
       supervisor_ids.map((uid: string) => ({ project_id: project.id, user_id: uid }))
     )
   }
 
   if (allowed_categories.length > 0) {
-    await supabase.from('project_allowed_categories').insert(
+    await admin.from('project_allowed_categories').insert(
       allowed_categories.map((c: { category_name: string; max_amount: number | null }) => ({
         project_id: project.id,
         category_name: c.category_name,
