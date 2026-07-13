@@ -5,11 +5,15 @@ import EsnFooter from '@/components/EsnFooter'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+
+  // Use getSession() — reads from cookie without extra network round-trip.
+  // The middleware already validated the session via getUser(); here we just
+  // need the user ID to fetch the profile.
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) redirect('/auth/login')
 
   const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single()
+    .from('profiles').select('*').eq('id', session.user.id).single()
 
   if (!profile) redirect('/auth/login')
 

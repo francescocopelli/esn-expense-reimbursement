@@ -3,14 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/auth/login')
+  // getSession() reads from cookie — safe after middleware has validated the token
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) redirect('/auth/login')
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .single()
 
   if (profile?.role === 'admin') redirect('/dashboard/admin')
